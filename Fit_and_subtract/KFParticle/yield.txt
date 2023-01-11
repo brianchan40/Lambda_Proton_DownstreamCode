@@ -1,0 +1,45 @@
+Centrality 0
+Lambda
+total yield = 511873
+AntiLambda
+total yield = 184945
+Centrality 1
+Lambda
+total yield = 1.98201e+06
+AntiLambda
+total yield = 689905
+Centrality 2
+Lambda
+total yield = 5.34277e+06
+AntiLambda
+total yield = 1.76848e+06
+Centrality 3
+Lambda
+total yield = 1.11947e+07
+AntiLambda
+total yield = 3.50263e+06
+Centrality 4
+Lambda
+total yield = 2.14912e+07
+AntiLambda
+total yield = 6.34643e+06
+Centrality 5
+Lambda
+total yield = 3.38854e+07
+AntiLambda
+total yield = 9.47535e+06
+Centrality 6
+Lambda
+total yield = 5.07689e+07
+AntiLambda
+total yield = 1.35017e+07
+Centrality 7
+Lambda
+total yield = 2.88756e+07
+AntiLambda
+total yield = 7.44107e+06
+Centrality 8
+Lambda
+total yield = 3.27083e+07
+AntiLambda
+total yield = 8.26123e+06

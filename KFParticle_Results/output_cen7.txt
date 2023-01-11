@@ -1,0 +1,4 @@
+Hist_v2parent_eta_obs5 Fit Parameter = 2.88024
+Hist_v2parent_eta_obs5_rot Fit Parameter = 3.20104
+Hist_v2parent_pt_obs5 cen 7: 2.88024, 0.00781534
+Hist_v2parent_pt_obs5_rot cen 7: 3.20166, 0.0201968
