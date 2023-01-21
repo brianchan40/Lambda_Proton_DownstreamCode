@@ -57,6 +57,7 @@
         "iterator": "cpp",
         "locale": "cpp",
         "mutex": "cpp",
-        "ratio": "cpp"
+        "ratio": "cpp",
+        "error_calc.C": "cpp"
     }
 }

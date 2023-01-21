@@ -7,6 +7,7 @@
 #include <TF1>
 #include "Rebin_v2_Data.C"
 #include <TGraphErrors>
+#include <error_calc.C>
 
 using namespace std;
 
@@ -30,6 +31,7 @@ std::vector<TString> name_options3;
 float reso_TPC[9] = {0.}, reso_EPD[9] = {0.}, reso_EPD1[9] = {0.};
 float reso_TPC_err[9] = {0.}, reso_EPD_err[9] = {0.}, reso_EPD1_err[9] = {0.};
 float gamma[2][9][3], gamma_err[2][9][3];
+float gamma_ensemble[2][9][3], gamma_ensemble_err[2][9][3];
 
 void extract_reso();
 void read_sig();
@@ -45,6 +47,8 @@ void profile_divide_by_reso_corr_by_bkg(const char *profile_name, int cen);
 // void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr);
 
 void Q2_parent_results(int cen, int ep_option, int option112);
+
+void plotting_TGraph_Helper(const char* title, const char* x_title, const char* y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2 = NULL, float *y2_err = NULL, float *y3 = NULL, float *y3_err = NULL);
 
 int min_cen = 0;
 int max_cen = 8;
@@ -69,11 +73,11 @@ void downstream_analysis()
 
     float v2_averaged_TPC[9] = {0.}, v2_averaged_EPD[9] = {0.}, v2_averaged_EPD1[9] = {0.}, v2_averaged_TPC_err[9] = {0.}, v2_averaged_EPD_err[9] = {0.}, v2_averaged_EPD1_err[9] = {0.};
 
-    for(int w = 0; w < 3; w++)
+    for (int w = 0; w < 3; w++)
     {
         result_file << "const float v2_averaged_" << name_options3.at(w) << "[9] = {";
 
-        for (int q = 0; q <= (max_cen-min_cen); q++)
+        for (int q = 0; q <= (max_cen - min_cen); q++)
         {
             // if(q != max_cen) result_file << alltrks_v2_vect[w].at(q) << ", ";
             // else result_file << alltrks_v2_vect[w].at(q) << "}; \n";
@@ -81,31 +85,38 @@ void downstream_analysis()
             // if(q != max_cen) result_file << alltrks_v2_vect[w].at(2*q) << " +/- " << alltrks_v2_vect[w].at(2*q + 1) << ", ";
             // else result_file << alltrks_v2_vect[w].at(2*q) << " +/- " << alltrks_v2_vect[w].at(2*q + 1) << "}; \n";
 
-            if(q != max_cen) result_file << alltrks_v2_vect[w].at(2*q) << ", ";
-            else result_file << alltrks_v2_vect[w].at(2*q) << "}; \n";
+            if (q != max_cen)
+                result_file << alltrks_v2_vect[w].at(2 * q) << ", ";
+            else
+                result_file << alltrks_v2_vect[w].at(2 * q) << "}; \n";
 
-            if(w == 0){
-                v2_averaged_TPC[q] = alltrks_v2_vect[w].at(2*q);
-                v2_averaged_TPC_err[q] = alltrks_v2_vect[w].at(2*q + 1);
+            if (w == 0)
+            {
+                v2_averaged_TPC[q] = alltrks_v2_vect[w].at(2 * q);
+                v2_averaged_TPC_err[q] = alltrks_v2_vect[w].at(2 * q + 1);
             }
-            else if(w == 1){
-                v2_averaged_EPD[q] = alltrks_v2_vect[w].at(2*q);
-                v2_averaged_EPD_err[q] = alltrks_v2_vect[w].at(2*q + 1);
+            else if (w == 1)
+            {
+                v2_averaged_EPD[q] = alltrks_v2_vect[w].at(2 * q);
+                v2_averaged_EPD_err[q] = alltrks_v2_vect[w].at(2 * q + 1);
             }
-            else if(w == 2){
-                v2_averaged_EPD1[q] = alltrks_v2_vect[w].at(2*q);
-                v2_averaged_EPD1_err[q] = alltrks_v2_vect[w].at(2*q + 1);
+            else if (w == 2)
+            {
+                v2_averaged_EPD1[q] = alltrks_v2_vect[w].at(2 * q);
+                v2_averaged_EPD1_err[q] = alltrks_v2_vect[w].at(2 * q + 1);
             }
         }
 
         result_file << "const float v2_parent_averaged_" << name_options3.at(w) << "[9] = {";
 
-        for (int q = 0; q <= (max_cen-min_cen); q++)
+        for (int q = 0; q <= (max_cen - min_cen); q++)
         {
             // if(q != max_cen) result_file << parent_v2_vect[w].at(q) << ", ";
             // else result_file << parent_v2_vect[w].at(q) << "}; \n";
-            if(q != max_cen) result_file << parent_v2_vect[w].at(2*q) << ", ";
-            else result_file << parent_v2_vect[w].at(2*q) << "}; \n";
+            if (q != max_cen)
+                result_file << parent_v2_vect[w].at(2 * q) << ", ";
+            else
+                result_file << parent_v2_vect[w].at(2 * q) << "}; \n";
         }
     }
 
@@ -139,7 +150,13 @@ void downstream_analysis()
     float gamma132_TPC[9] = {0.}, gamma132_EPD[9] = {0.}, gamma132_EPD1[9] = {0.};
     float gamma132_TPC_err[9] = {0.}, gamma132_EPD_err[9] = {0.}, gamma132_EPD1_err[9] = {0.};
 
-    for(int j = 0; j < 9; j++){
+    float gamma112_ensemble_TPC[9] = {0.}, gamma112_ensemble_EPD[9] = {0.}, gamma112_ensemble_EPD1[9] = {0.};
+    float gamma112_ensemble_TPC_err[9] = {0.}, gamma112_ensemble_EPD_err[9] = {0.}, gamma112_ensemble_EPD1_err[9] = {0.};
+    float gamma132_ensemble_TPC[9] = {0.}, gamma132_ensemble_EPD[9] = {0.}, gamma132_ensemble_EPD1[9] = {0.};
+    float gamma132_ensemble_TPC_err[9] = {0.}, gamma132_ensemble_EPD_err[9] = {0.}, gamma132_ensemble_EPD1_err[9] = {0.};
+
+    for (int j = min_cen; j <= max_cen; j++)
+    {
         gamma112_TPC[j] = gamma[0][j][0] * npart[j];
         gamma112_EPD[j] = gamma[0][j][1] * npart[j];
         gamma112_EPD1[j] = gamma[0][j][2] * npart[j];
@@ -153,7 +170,30 @@ void downstream_analysis()
         gamma132_TPC_err[j] = gamma_err[1][j][0] * npart[j];
         gamma132_EPD_err[j] = gamma_err[1][j][1] * npart[j];
         gamma132_EPD1_err[j] = gamma_err[1][j][2] * npart[j];
+
+        gamma112_ensemble_TPC[j] = gamma_ensemble[0][j][0] * npart[j];
+        gamma112_ensemble_EPD[j] = gamma_ensemble[0][j][1] * npart[j];
+        gamma112_ensemble_EPD1[j] = gamma_ensemble[0][j][2] * npart[j];
+        gamma132_ensemble_TPC[j] = gamma_ensemble[1][j][0] * npart[j];
+        gamma132_ensemble_EPD[j] = gamma_ensemble[1][j][1] * npart[j];
+        gamma132_ensemble_EPD1[j] = gamma_ensemble[1][j][2] * npart[j];
+
+        gamma112_ensemble_TPC_err[j] = gamma_ensemble_err[0][j][0] * npart[j];
+        gamma112_ensemble_EPD_err[j] = gamma_ensemble_err[0][j][1] * npart[j];
+        gamma112_ensemble_EPD1_err[j] = gamma_ensemble_err[0][j][2] * npart[j];
+        gamma132_ensemble_TPC_err[j] = gamma_ensemble_err[1][j][0] * npart[j];
+        gamma132_ensemble_EPD_err[j] = gamma_ensemble_err[1][j][1] * npart[j];
+        gamma132_ensemble_EPD1_err[j] = gamma_ensemble_err[1][j][2] * npart[j];
     }
+
+    // cout << "gamma_ensemble_err[0][0][0] = " << gamma_ensemble_err[0][0][0] << endl;
+
+    plotting_TGraph_Helper("Compare ESE vs. Ensemble TPC #Delta#gamma_{112} * N_{part}", "Centrality %", "#Delta#gamma_{112} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma112_TPC, gamma112_TPC_err, gamma112_ensemble_TPC, gamma112_ensemble_TPC_err);
+    plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD #Delta#gamma_{112} * N_{part}", "Centrality %", "#Delta#gamma_{112} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma112_EPD, gamma112_EPD_err, gamma112_ensemble_EPD, gamma112_ensemble_EPD_err);
+    plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD1 #Delta#gamma_{112} * N_{part}", "Centrality %", "#Delta#gamma_{112} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma112_EPD1, gamma112_EPD1_err, gamma112_ensemble_EPD1, gamma112_ensemble_EPD1_err);
+    plotting_TGraph_Helper("Compare ESE vs. Ensemble TPC #Delta#gamma_{132} * N_{part}", "Centrality %", "#Delta#gamma_{132} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma132_TPC, gamma132_TPC_err, gamma132_ensemble_TPC, gamma132_ensemble_TPC_err);
+    plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD #Delta#gamma_{132} * N_{part}", "Centrality %", "#Delta#gamma_{132} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma132_EPD, gamma132_EPD_err, gamma132_ensemble_EPD, gamma132_ensemble_EPD_err);
+    plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD1 #Delta#gamma_{132} * N_{part}", "Centrality %", "#Delta#gamma_{132} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma132_EPD1, gamma132_EPD1_err, gamma132_ensemble_EPD1, gamma132_ensemble_EPD1_err);
 
     TGraphErrors *gamma112_TPC_graph = new TGraphErrors(9, cen9_eff, gamma112_TPC, cen9_err_eff, gamma112_TPC_err);
     TGraphErrors *gamma112_EPD_graph = new TGraphErrors(9, cen9_eff, gamma112_EPD, cen9_err_eff, gamma112_EPD_err);
@@ -161,6 +201,13 @@ void downstream_analysis()
     TGraphErrors *gamma132_TPC_graph = new TGraphErrors(9, cen9_eff, gamma132_TPC, cen9_err_eff, gamma132_TPC_err);
     TGraphErrors *gamma132_EPD_graph = new TGraphErrors(9, cen9_eff, gamma132_EPD, cen9_err_eff, gamma132_EPD_err);
     TGraphErrors *gamma132_EPD1_graph = new TGraphErrors(9, cen9_eff, gamma132_EPD1, cen9_err_eff, gamma132_EPD1_err);
+
+    TGraphErrors *gamma112_ensemble_TPC_graph = new TGraphErrors(9, cen9_eff, gamma112_ensemble_TPC, cen9_err_eff, gamma112_ensemble_TPC_err);
+    TGraphErrors *gamma112_ensemble_EPD_graph = new TGraphErrors(9, cen9_eff, gamma112_ensemble_EPD, cen9_err_eff, gamma112_ensemble_EPD_err);
+    TGraphErrors *gamma112_ensemble_EPD1_graph = new TGraphErrors(9, cen9_eff, gamma112_ensemble_EPD1, cen9_err_eff, gamma112_ensemble_EPD1_err);
+    TGraphErrors *gamma132_ensemble_TPC_graph = new TGraphErrors(9, cen9_eff, gamma132_ensemble_TPC, cen9_err_eff, gamma132_ensemble_TPC_err);
+    TGraphErrors *gamma132_ensemble_EPD_graph = new TGraphErrors(9, cen9_eff, gamma132_ensemble_EPD, cen9_err_eff, gamma132_ensemble_EPD_err);
+    TGraphErrors *gamma132_ensemble_EPD1_graph = new TGraphErrors(9, cen9_eff, gamma132_ensemble_EPD1, cen9_err_eff, gamma132_ensemble_EPD1_err);
 
     TLine l1(0, 0, 80, 0);
 
@@ -231,6 +278,40 @@ void downstream_analysis()
     result_file.close();
 }
 
+void plotting_TGraph_Helper(const char* title, const char* x_title, const char* y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2, float *y2_err, float *y3, float *y3_err){
+    TGraphErrors *tmp_graph1 = new TGraphErrors(npts, x, y1, x_err, y1_err);
+    // cout << "y1_err[0] = " << y1_err[0] << endl;
+    // cout << "y2_err[0] = " << y2_err[0] << endl;
+    if(y2 != NULL) TGraphErrors *tmp_graph2 = new TGraphErrors(npts, x, y2, x_err, y2_err);
+    if(y3 != NULL) TGraphErrors *tmp_graph3 = new TGraphErrors(npts, x, y3, x_err, y3_err);
+
+    output_File2->cd();
+    TCanvas c1(title, title, 1500, 800);
+    tmp_graph1->SetMarkerStyle(kFullCircle);
+    tmp_graph1->SetMarkerColor(kBlack);
+    tmp_graph1->SetLineColor(kBlack);
+    tmp_graph1->SetTitle(title);
+    tmp_graph1->GetXaxis()->SetTitle(x_title);
+    tmp_graph1->GetYaxis()->SetTitle(y_title);
+    tmp_graph1->Draw("AP");
+    if(y2 != NULL){
+        // cout << "plotting second" << endl;
+        tmp_graph2->SetMarkerStyle(kFullCircle);
+        tmp_graph2->SetMarkerColor(kRed);
+        tmp_graph2->SetLineColor(kRed);
+        tmp_graph2->Draw("SAMES P");
+    }
+    if(y3 != NULL){
+        tmp_graph3->SetMarkerStyle(kFullCircle);
+        tmp_graph3->SetMarkerColor(kBlue);
+        tmp_graph3->SetLineColor(kBlue);
+        tmp_graph3->Draw("SAMES P");
+    }
+    TLine l1(0, 0, 80, 0);
+    l1.Draw();
+    c1.Write();
+}
+
 void downstream_analysis_bycen(int cen)
 {
     file = new TFile(TString::Format("./%s/Results_lam_18/cen%d.gamma112_fullEP_eff_pT02_module.root", method_name, cen).Data());
@@ -242,41 +323,42 @@ void downstream_analysis_bycen(int cen)
     reso_EPD[cen] = reso[1];
     reso_EPD1[cen] = reso[2];
 
-//     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5", cen);
-//     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5_rot", cen);
+    //     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5", cen);
+    //     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5_rot", cen);
 
-//     // profile_divide_by_reso("Parity_int_obs", cen, false);
-//     // profile_divide_by_reso("Parity_int_obs", cen, true);
-//     // profile_divide_by_reso("Parity_int_ss_obs", cen, false);
-//     // profile_divide_by_reso("Parity_int_ss_obs", cen, true);
-//     // profile_divide_by_reso("Delta_int_ss_obs", cen, false);
-//     // profile_divide_by_reso("Delta_int_ss_obs", cen, true);
+    profile_divide_by_reso("Parity_int_obs", cen, false);
+    profile_divide_by_reso("Parity_int_obs", cen, true);
+    profile_divide_by_reso("Parity_int_ss_obs", cen, false);
+    profile_divide_by_reso("Parity_int_ss_obs", cen, true);
+    profile_divide_by_reso("Delta_int_ss_obs", cen, false);
+    profile_divide_by_reso("Delta_int_ss_obs", cen, true);
 
     char fname[200];
-    for(int jk = 0; jk < 3; jk++){
+    for (int jk = 0; jk < 3; jk++)
+    {
         sprintf(fname, "Hist_v2parent_pt_%s_obs5", name_options3.at(jk).Data());
         vector<float> temp_vec = Rebin_v2_Data(fname, fname, cen, jk);
         // parent_v2_vect[jk].push_back(temp_vec.at(0));
-        parent_v2_vect[jk].push_back(temp_vec.at(1)/100.0);
-        parent_v2_vect[jk].push_back(temp_vec.at(2)/100.0);
+        parent_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
+        parent_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
         temp_vec.clear();
 
         sprintf(fname, "Hist_v2_pt_obs2_%s_alltrks", name_options3.at(jk).Data());
         temp_vec = Rebin_v2_Data(fname, fname, cen, jk);
         // alltrks_v2_vect[jk].push_back(temp_vec.at(0));
-        alltrks_v2_vect[jk].push_back(temp_vec.at(1)/100.0);
-        alltrks_v2_vect[jk].push_back(temp_vec.at(2)/100.0);
+        alltrks_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
+        alltrks_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
         temp_vec.clear();
     }
-//     // vector<float> temp_vec = Rebin_v2_Data("Hist_v2parent_pt_obs5", "Hist_v2parent_pt_obs5", cen);
-//     // result_file << "Hist_v2parent_pt_obs5 cen " << cen << ": " << temp_vec.at(1) << ", " << temp_vec.at(2) << "\n";
-//     // temp_vec.clear();
-//     temp_vec = Rebin_v2_Data("Hist_v2parent_pt_obs5_rot", "Hist_v2parent_pt_obs5_rot", cen);
-//     result_file << "Hist_v2parent_pt_obs5_rot cen " << cen << ": " << temp_vec.at(1) << ", " << temp_vec.at(2) << "\n";
-//     temp_vec.clear();
+    //     // vector<float> temp_vec = Rebin_v2_Data("Hist_v2parent_pt_obs5", "Hist_v2parent_pt_obs5", cen);
+    //     // result_file << "Hist_v2parent_pt_obs5 cen " << cen << ": " << temp_vec.at(1) << ", " << temp_vec.at(2) << "\n";
+    //     // temp_vec.clear();
+    //     temp_vec = Rebin_v2_Data("Hist_v2parent_pt_obs5_rot", "Hist_v2parent_pt_obs5_rot", cen);
+    //     result_file << "Hist_v2parent_pt_obs5_rot cen " << cen << ": " << temp_vec.at(1) << ", " << temp_vec.at(2) << "\n";
+    //     temp_vec.clear();
 
-//     vector<float> temp_vec = Rebin_v2_Data("Hist_v2_pt_obs2_alltrks", "Hist_v2_pt_obs1_alltrks", cen);
-//     result_file << "Hist_v2_pt_obs2_alltrks cen " << cen << ": " << temp_vec.at(1) << ", " << temp_vec.at(2) << "\n";
+    //     vector<float> temp_vec = Rebin_v2_Data("Hist_v2_pt_obs2_alltrks", "Hist_v2_pt_obs1_alltrks", cen);
+    //     result_file << "Hist_v2_pt_obs2_alltrks cen " << cen << ": " << temp_vec.at(1) << ", " << temp_vec.at(2) << "\n";
 
     // profile_divide_by_reso_corr_by_bkg("Parity_int_obs", cen, false);
     // profile_divide_by_reso_corr_by_bkg("Parity_int_ss_obs", cen, false);
@@ -288,7 +370,8 @@ void downstream_analysis_bycen(int cen)
     // profile_divide_by_reso_corr_by_bkg("Parity_int_ss_obs3_splitpt_QQcut", cen);
     // profile_divide_by_reso_corr_by_bkg("Delta_int_ss_obs3_splitpt_QQcut", cen);
 
-    for(int j = 0; j < 3; j++){
+    for (int j = 0; j < 3; j++)
+    {
         Q2_parent_results(cen, j, 0);
         Q2_parent_results(cen, j, 1);
         cout << "done with " << j << endl;
@@ -320,8 +403,10 @@ void profile_divide_by_reso_corr_by_bkg(const char *profile_name, int cen, bool 
 
     TString qqornot;
 
-    if(qq) qqornot = "splitpt_QQcut";
-    else qqornot = "splitpt";
+    if (qq)
+        qqornot = "splitpt_QQcut";
+    else
+        qqornot = "splitpt";
 
     TProfile *result_profile = (TProfile *)file->Get(TString::Format("%s3_%s_0", profile_name, qqornot.Data()).Data());
     TProfile *first_bkg = (TProfile *)file->Get(TString::Format("%s3_%s_rot_0", profile_name, qqornot.Data()).Data());
@@ -435,247 +520,282 @@ void profile_divide_by_reso_corr_by_bkg(const char *profile_name, int cen, bool 
     result_graph_combined->Write(TString::Format("%s3_%s_combined_bkgcorr", profile_name, qqornot.Data()).Data());
 }
 
-// void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr)
-// {
-//     cout << profile_name << endl;
+void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr)
+{
+    cout << profile_name << endl;
+    const int n_entries = 25;
 
-//     int num = 0;
-//     if (eff_corr)
-//         num = 3;
-//     else
-//         num = 1;
+    int num = 0;
+    if (eff_corr)
+        num = 3;
+    else
+        num = 1;
 
-//     TProfile *temp_profile = (TProfile *)file->Get(TString::Format("%s%d", profile_name, num));
-//     TProfile *temp_profile_rot = (TProfile *)file->Get(TString::Format("%s%d_rot", profile_name, num));
-//     int n_bins = temp_profile->GetNbinsX();
-//     double x[10] = {0.}, x_err[10] = {0.}, y[10] = {0.}, y_err[10] = {0.};
+    TProfile *temp_profile = (TProfile *)file->Get(TString::Format("%s%d", profile_name, num));
+    TProfile *temp_profile_rot = (TProfile *)file->Get(TString::Format("%s%d_rot", profile_name, num));
+    int n_bins = temp_profile->GetNbinsX();
+    double x[n_entries] = {0.}, x_err[n_entries] = {0.}, y[n_entries] = {0.}, y_err[n_entries] = {0.};
+    // cout << "Sumw2() checks 1" << endl;
+    temp_profile->Sumw2();
+    temp_profile_rot->Sumw2();
 
-//     temp_profile->Sumw2();
-//     temp_profile_rot->Sumw2();
+    // temp_profile->Add(temp_profile, temp_profile_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
 
-//     temp_profile->Add(temp_profile, temp_profile_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
+    // cout << "lam_purity[cen][17] = " << lam_purity[cen][17] << endl;
 
-//     cout << "reso1 = " << reso1 << endl;
+    // temp_profile->Scale(1.0 / reso1);
 
-//     cout << "lam_purity[cen][17] = " << lam_purity[cen][17] << endl;
+    TProfile *temp_profile_err = (TProfile *)file->Get(TString::Format("%s%d", profile_name, 1));
+    TProfile *temp_profile_err_rot = (TProfile *)file->Get(TString::Format("%s%d_rot", profile_name, 1));
+    // cout << "Sumw2() checks 2" << endl;
+    // temp_profile_err->Sumw2();
+    // temp_profile_err_rot->Sumw2();
 
-//     temp_profile->Scale(1.0 / reso1);
+    if (eff_corr)
+    {
+        // temp_profile_err->Add(temp_profile_err, temp_profile_err_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
 
-//     TProfile *temp_profile_err = (TProfile *)file->Get(TString::Format("%s%d", profile_name, 1));
-//     TProfile *temp_profile_err_rot = (TProfile *)file->Get(TString::Format("%s%d_rot", profile_name, 1));
-//     temp_profile_err->Sumw2();
-//     temp_profile_err_rot->Sumw2();
+        // temp_profile_err->Scale(1.0 / reso1);
 
-//     if (eff_corr)
-//     {
-//         temp_profile_err->Add(temp_profile_err, temp_profile_err_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
+        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
+        {
+            x[i - 1] = i;
+            y[i - 1] = temp_profile->GetBinContent(i);
+            y_err[i - 1] = temp_profile_err->GetBinError(i);
 
-//         temp_profile_err->Scale(1.0 / reso1);
+            // cout << "y[" << i - 1 << "] = " << y[i - 1] << endl;
+        }
+    }
+    else
+    {
+        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
+        {
+            x[i - 1] = i;
+            y[i - 1] = temp_profile->GetBinContent(i);
+            y_err[i - 1] = temp_profile->GetBinError(i);
 
-//         for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-//         {
-//             x[i - 1] = i;
-//             y[i - 1] = temp_profile->GetBinContent(i);
-//             y_err[i - 1] = temp_profile_err->GetBinError(i);
+            // cout << "y[" << i - 1 << "] = " << y[i - 1] << endl;
+        }
+    }
 
-//             cout << "y[" << i - 1 << "] = " << y[i - 1] << endl;
-//         }
-//     }
-//     else
-//     {
-//         for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-//         {
-//             x[i - 1] = i;
-//             y[i - 1] = temp_profile->GetBinContent(i);
-//             y_err[i - 1] = temp_profile->GetBinError(i);
+    TGraphErrors *temp_graph = new TGraphErrors(n_bins, x, y, x_err, y_err);
 
-//             cout << "y[" << i - 1 << "] = " << y[i - 1] << endl;
-//         }
-//     }
+    // TProfile *temp_profile_QQcut = (TProfile *)file->Get(TString::Format("%s%d_QQcut", profile_name, num));
+    // TProfile *temp_profile_QQcut_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_rot", profile_name, num));
+    // int n_bins_QQcut = temp_profile_QQcut->GetNbinsX();
+    // double x_QQcut[10] = {0.}, x_err_QQcut[10] = {0.}, y_QQcut[10] = {0.}, y_err_QQcut[10] = {0.};
 
-//     TGraphErrors *temp_graph = new TGraphErrors(n_bins, x, y, x_err, y_err);
+    // temp_profile_QQcut->Sumw2();
+    // temp_profile_QQcut_rot->Sumw2();
 
-//     TProfile *temp_profile_QQcut = (TProfile *)file->Get(TString::Format("%s%d_QQcut", profile_name, num));
-//     TProfile *temp_profile_QQcut_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_rot", profile_name, num));
-//     int n_bins_QQcut = temp_profile_QQcut->GetNbinsX();
-//     double x_QQcut[10] = {0.}, x_err_QQcut[10] = {0.}, y_QQcut[10] = {0.}, y_err_QQcut[10] = {0.};
+    // temp_profile_QQcut->Add(temp_profile_QQcut, temp_profile_QQcut_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
 
-//     temp_profile_QQcut->Sumw2();
-//     temp_profile_QQcut_rot->Sumw2();
+    // temp_profile_QQcut->Scale(1.0 / reso1);
 
-//     temp_profile_QQcut->Add(temp_profile_QQcut, temp_profile_QQcut_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
+    // TProfile *temp_profile_err_QQcut = (TProfile *)file->Get(TString::Format("%s%d_QQcut", profile_name, 1));
+    // TProfile *temp_profile_err_QQcut_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_rot", profile_name, 1));
+    // temp_profile_err_QQcut->Sumw2();
+    // temp_profile_err_QQcut_rot->Scale(1.0 / reso1);
 
-//     temp_profile_QQcut->Scale(1.0 / reso1);
+    // if (eff_corr)
+    // {
+    //     temp_profile_err_QQcut->Add(temp_profile_err_QQcut, temp_profile_err_QQcut_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
 
-//     TProfile *temp_profile_err_QQcut = (TProfile *)file->Get(TString::Format("%s%d_QQcut", profile_name, 1));
-//     TProfile *temp_profile_err_QQcut_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_rot", profile_name, 1));
-//     temp_profile_err_QQcut->Sumw2();
-//     temp_profile_err_QQcut_rot->Scale(1.0 / reso1);
+    //     temp_profile_err_QQcut->Scale(1.0 / reso1);
 
-//     if (eff_corr)
-//     {
-//         temp_profile_err_QQcut->Add(temp_profile_err_QQcut, temp_profile_err_QQcut_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
+    //     for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
+    //     {
+    //         x_QQcut[i - 1] = i;
+    //         y_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
+    //         y_err_QQcut[i - 1] = temp_profile_err_QQcut->GetBinError(i);
+    //     }
+    // }
+    // else
+    // {
+    //     for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
+    //     {
+    //         x_QQcut[i - 1] = i;
+    //         y_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
+    //         y_err_QQcut[i - 1] = temp_profile_QQcut->GetBinError(i);
+    //     }
+    // }
 
-//         temp_profile_err_QQcut->Scale(1.0 / reso1);
+    // TGraphErrors *temp_graph_QQcut = new TGraphErrors(n_bins_QQcut, x_QQcut, y_QQcut, x_err_QQcut, y_err_QQcut);
 
-//         for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
-//         {
-//             x_QQcut[i - 1] = i;
-//             y_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
-//             y_err_QQcut[i - 1] = temp_profile_err_QQcut->GetBinError(i);
-//         }
-//     }
-//     else
-//     {
-//         for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
-//         {
-//             x_QQcut[i - 1] = i;
-//             y_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
-//             y_err_QQcut[i - 1] = temp_profile_QQcut->GetBinError(i);
-//         }
-//     }
+    // antilambda
+    TProfile *temp_profile_anti = (TProfile *)file->Get(TString::Format("%s%d_anti", profile_name, num));
+    TProfile *temp_profile_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_anti_rot", profile_name, num));
+    int n_bins_anti = temp_profile_anti->GetNbinsX();
+    double x_anti[n_entries] = {0.}, x_anti_err[n_entries] = {0.}, y_anti[n_entries] = {0.}, y_anti_err[n_entries] = {0.};
+    // cout << "Sumw2() checks 3" << endl;
+    temp_profile_anti->Sumw2();
+    temp_profile_anti_rot->Sumw2();
 
-//     TGraphErrors *temp_graph_QQcut = new TGraphErrors(n_bins_QQcut, x_QQcut, y_QQcut, x_err_QQcut, y_err_QQcut);
+    // temp_profile_anti->Add(temp_profile_anti, temp_profile_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
 
-//     // antilambda
-//     TProfile *temp_profile_anti = (TProfile *)file->Get(TString::Format("%s%d_anti", profile_name, num));
-//     TProfile *temp_profile_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_anti_rot", profile_name, num));
-//     int n_bins_anti = temp_profile_anti->GetNbinsX();
-//     double x_anti[10] = {0.}, x_anti_err[10] = {0.}, y_anti[10] = {0.}, y_anti_err[10] = {0.};
+    // temp_profile_anti->Scale(1.0 / reso1);
 
-//     temp_profile_anti->Sumw2();
-//     temp_profile_anti_rot->Sumw2();
+    TProfile *temp_profile_anti_err = (TProfile *)file->Get(TString::Format("%s%d_anti", profile_name, 1));
+    TProfile *temp_profile_err_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_anti_rot", profile_name, 1));
+    // cout << "Sumw2() checks 4" << endl;
+    // temp_profile_anti_err->Sumw2();
+    // temp_profile_err_anti_rot->Sumw2();
 
-//     temp_profile_anti->Add(temp_profile_anti, temp_profile_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
+    if (eff_corr)
+    {
+        // temp_profile_anti_err->Add(temp_profile_anti_err, temp_profile_err_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
 
-//     temp_profile_anti->Scale(1.0 / reso1);
+        // temp_profile_anti_err->Scale(1.0 / reso1);
 
-//     TProfile *temp_profile_anti_err = (TProfile *)file->Get(TString::Format("%s%d_anti", profile_name, 1));
-//     TProfile *temp_profile_err_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_anti_rot", profile_name, 1));
-//     temp_profile_anti_err->Sumw2();
-//     temp_profile_err_anti_rot->Sumw2();
+        for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
+        {
+            x_anti[i - 1] = i;
+            y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
+            y_anti_err[i - 1] = temp_profile_anti_err->GetBinError(i);
+        }
+    }
+    else
+    {
+        for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
+        {
+            x_anti[i - 1] = i;
+            y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
+            y_anti_err[i - 1] = temp_profile_anti->GetBinError(i);
+        }
+    }
 
-//     if (eff_corr)
-//     {
-//         temp_profile_anti_err->Add(temp_profile_anti_err, temp_profile_err_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
+    TGraphErrors *temp_graph_anti = new TGraphErrors(n_bins_anti, x_anti, y_anti, x_anti_err, y_anti_err);
 
-//         temp_profile_anti_err->Scale(1.0 / reso1);
+    // TProfile *temp_profile_QQcut_anti = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti", profile_name, num));
+    // TProfile *temp_profile_QQcut_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti_rot", profile_name, num));
+    // int n_bins_QQcut_anti = temp_profile_QQcut_anti->GetNbinsX();
+    // double x_QQcut_anti[10] = {0.}, x_err_QQcut_anti[10] = {0.}, y_QQcut_anti[10] = {0.}, y_err_QQcut_anti[10] = {0.};
 
-//         for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
-//         {
-//             x_anti[i - 1] = i;
-//             y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
-//             y_anti_err[i - 1] = temp_profile_anti_err->GetBinError(i);
-//         }
-//     }
-//     else
-//     {
-//         for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
-//         {
-//             x_anti[i - 1] = i;
-//             y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
-//             y_anti_err[i - 1] = temp_profile_anti->GetBinError(i);
-//         }
-//     }
+    // temp_profile_QQcut_anti->Sumw2();
+    // temp_profile_QQcut_anti_rot->Sumw2();
 
-//     TGraphErrors *temp_graph_anti = new TGraphErrors(n_bins_anti, x_anti, y_anti, x_anti_err, y_anti_err);
+    // temp_profile_QQcut_anti->Add(temp_profile_QQcut_anti, temp_profile_QQcut_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
 
-//     TProfile *temp_profile_QQcut_anti = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti", profile_name, num));
-//     TProfile *temp_profile_QQcut_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti_rot", profile_name, num));
-//     int n_bins_QQcut_anti = temp_profile_QQcut_anti->GetNbinsX();
-//     double x_QQcut_anti[10] = {0.}, x_err_QQcut_anti[10] = {0.}, y_QQcut_anti[10] = {0.}, y_err_QQcut_anti[10] = {0.};
+    // temp_profile_QQcut_anti->Scale(1.0 / reso1);
 
-//     temp_profile_QQcut_anti->Sumw2();
-//     temp_profile_QQcut_anti_rot->Sumw2();
+    // TProfile *temp_profile_err_QQcut_anti = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti", profile_name, 1));
+    // TProfile *temp_profile_err_QQcut_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti_rot", profile_name, 1));
+    // temp_profile_err_QQcut_anti->Sumw2();
+    // temp_profile_err_QQcut_anti_rot->Scale(1.0 / reso1);
 
-//     temp_profile_QQcut_anti->Add(temp_profile_QQcut_anti, temp_profile_QQcut_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
+    // if (eff_corr)
+    // {
+    //     temp_profile_err_QQcut_anti->Add(temp_profile_err_QQcut_anti, temp_profile_err_QQcut_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
 
-//     temp_profile_QQcut_anti->Scale(1.0 / reso1);
+    //     temp_profile_err_QQcut_anti->Scale(1.0 / reso1);
 
-//     TProfile *temp_profile_err_QQcut_anti = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti", profile_name, 1));
-//     TProfile *temp_profile_err_QQcut_anti_rot = (TProfile *)file->Get(TString::Format("%s%d_QQcut_anti_rot", profile_name, 1));
-//     temp_profile_err_QQcut_anti->Sumw2();
-//     temp_profile_err_QQcut_anti_rot->Scale(1.0 / reso1);
+    //     for (int i = 1; i <= temp_profile_QQcut_anti->GetNbinsX(); i++)
+    //     {
+    //         x_QQcut_anti[i - 1] = i;
+    //         y_QQcut_anti[i - 1] = temp_profile_QQcut_anti->GetBinContent(i);
+    //         y_err_QQcut_anti[i - 1] = temp_profile_err_QQcut_anti->GetBinError(i);
+    //     }
+    // }
+    // else
+    // {
+    //     for (int i = 1; i <= temp_profile_QQcut_anti->GetNbinsX(); i++)
+    //     {
+    //         x_QQcut_anti[i - 1] = i;
+    //         y_QQcut_anti[i - 1] = temp_profile_QQcut_anti->GetBinContent(i);
+    //         y_err_QQcut_anti[i - 1] = temp_profile_QQcut_anti->GetBinError(i);
+    //     }
+    // }
 
-//     if (eff_corr)
-//     {
-//         temp_profile_err_QQcut_anti->Add(temp_profile_err_QQcut_anti, temp_profile_err_QQcut_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
+    // TGraphErrors *temp_graph_QQcut_anti = new TGraphErrors(n_bins_QQcut_anti, x_QQcut_anti, y_QQcut_anti, x_err_QQcut_anti, y_err_QQcut_anti);
 
-//         temp_profile_err_QQcut_anti->Scale(1.0 / reso1);
+    temp_profile->Add(temp_profile_anti);
+    double x_combined[n_entries] = {0.}, x_err_combined[n_entries] = {0.}, y_combined[n_entries] = {0.}, y_err_combined[n_entries] = {0.};
+    if (eff_corr)
+    {
+        temp_profile_err->Add(temp_profile_anti_err);
+        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
+        {
+            x_combined[i - 1] = i;
+            y_combined[i - 1] = temp_profile->GetBinContent(i);
+            y_err_combined[i - 1] = temp_profile_err->GetBinError(i);
 
-//         for (int i = 1; i <= temp_profile_QQcut_anti->GetNbinsX(); i++)
-//         {
-//             x_QQcut_anti[i - 1] = i;
-//             y_QQcut_anti[i - 1] = temp_profile_QQcut_anti->GetBinContent(i);
-//             y_err_QQcut_anti[i - 1] = temp_profile_err_QQcut_anti->GetBinError(i);
-//         }
-//     }
-//     else
-//     {
-//         for (int i = 1; i <= temp_profile_QQcut_anti->GetNbinsX(); i++)
-//         {
-//             x_QQcut_anti[i - 1] = i;
-//             y_QQcut_anti[i - 1] = temp_profile_QQcut_anti->GetBinContent(i);
-//             y_err_QQcut_anti[i - 1] = temp_profile_QQcut_anti->GetBinError(i);
-//         }
-//     }
+            // cout << "y_combined[" << i - 1 << "] = " << y_combined[i - 1] << endl;
+        }
+    }
+    else
+    {
+        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
+        {
+            x_combined[i - 1] = i;
+            y_combined[i - 1] = temp_profile->GetBinContent(i);
+            y_err_combined[i - 1] = temp_profile->GetBinError(i);
+        }
+    }
 
-//     TGraphErrors *temp_graph_QQcut_anti = new TGraphErrors(n_bins_QQcut_anti, x_QQcut_anti, y_QQcut_anti, x_err_QQcut_anti, y_err_QQcut_anti);
+    TGraphErrors *temp_graph_combined = new TGraphErrors(n_bins, x_combined, y_combined, x_err_combined, y_err_combined);
 
-//     temp_profile->Add(temp_profile_anti);
-//     double x_combined[10] = {0.}, x_err_combined[10] = {0.}, y_combined[10] = {0.}, y_err_combined[10] = {0.};
-//     if (eff_corr)
-//     {
-//         temp_profile_err->Add(temp_profile_anti_err);
-//         for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-//         {
-//             x_combined[i - 1] = i;
-//             y_combined[i - 1] = temp_profile->GetBinContent(i);
-//             y_err_combined[i - 1] = temp_profile_err->GetBinError(i);
-//         }
-//     }
-//     else{
-//         for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-//         {
-//             x_combined[i - 1] = i;
-//             y_combined[i - 1] = temp_profile->GetBinContent(i);
-//             y_err_combined[i - 1] = temp_profile->GetBinError(i);
-//         }
-//     }
-    
-//     TGraphErrors *temp_graph_combined = new TGraphErrors(n_bins, x_combined, y_combined, x_err_combined, y_err_combined);
+    // cout << "n_bins = " << n_bins << endl;
 
-//     temp_profile_QQcut->Add(temp_profile_QQcut_anti);
-//     double x_combined_QQcut[10] = {0.}, x_err_combined_QQcut[10] = {0.}, y_combined_QQcut[10] = {0.}, y_err_combined_QQcut[10] = {0.};
-//     if (eff_corr)
-//     {
-//         temp_profile_err_QQcut->Add(temp_profile_err_QQcut_anti);
-//         for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
-//         {
-//             x_combined_QQcut[i - 1] = i;
-//             y_combined_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
-//             y_err_combined_QQcut[i - 1] = temp_profile_err_QQcut->GetBinError(i);
-//         }
-//     }
-//     else{
-//         for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
-//         {
-//             x_combined_QQcut[i - 1] = i;
-//             y_combined_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
-//             y_err_combined_QQcut[i - 1] = temp_profile_QQcut->GetBinError(i);
-//         }
-//     }
-    
-//     TGraphErrors *temp_graph_combined_QQcut = new TGraphErrors(n_bins_QQcut, x_combined_QQcut, y_combined_QQcut, x_err_combined_QQcut, y_err_combined_QQcut);
+    for (int tp1 = 0; tp1 < 3; tp1++)
+    {
+        if (profile_name == "Parity_int_obs")
+        {
+            gamma_ensemble[1][cen][tp1] = (float)((y_combined[4 + (8 * tp1)] - y_combined[3 + (8 * tp1)]) + (y_combined[8 + (8 * tp1)] - y_combined[7 + (8 * tp1)])) / 2.0;
+            gamma_ensemble[1][cen][tp1] = gamma_ensemble[1][cen][tp1] / reso[tp1] / 100.0;
 
-//     output_File->cd();
-//     temp_graph->Write(TString::Format("%s%d", profile_name, num));
-//     temp_graph_QQcut->Write(TString::Format("%s%d_QQcut", profile_name, num));
-//     temp_graph_anti->Write(TString::Format("%s%d_anti", profile_name, num));
-//     temp_graph_QQcut_anti->Write(TString::Format("%s%d_QQcut_anti", profile_name, num));
-//     temp_graph_combined->Write(TString::Format("%s%d_combined", profile_name, num));
-//     temp_graph_combined_QQcut->Write(TString::Format("%s%d_QQcut_combined", profile_name, num));
-// }
+            float tmp_error1 = error_add(y_err_combined[4 + (8 * tp1)], y_err_combined[3 + (8 * tp1)]);
+            float tmp_erorr2 = error_add(y_err_combined[8 + (8 * tp1)], y_err_combined[7 + (8 * tp1)]);
+            gamma_ensemble_err[1][cen][tp1] = (float) error_add(tmp_error1, tmp_erorr2) / 2.0;
+            gamma_ensemble_err[1][cen][tp1] = gamma_ensemble_err[1][cen][tp1] / reso[tp1] / 100.0;
+
+            // cout << "gamma_ensemble[1][" << cen << "][" << tp1 << "] = " << gamma_ensemble[1][cen][tp1] << endl;
+        }
+        if (profile_name == "Parity_int_ss_obs")
+        {
+            // cout << "y_combined[" << 4 + (4 * tp1) << "] = " << y_combined[4 + (4 * tp1)] << endl;
+            gamma_ensemble[0][cen][tp1] = y_combined[4 + (4 * tp1)] - y_combined[3 + (4 * tp1)];
+            // cout << "gamma_ensemble[0][" << cen << "][" << tp1 << "] = " << gamma_ensemble[0][cen][tp1] << endl;
+            gamma_ensemble[0][cen][tp1] = gamma_ensemble[0][cen][tp1] / reso[tp1] / 100.0;
+            // cout << "reso1[" << tp1 << "] = " << reso1[tp1] << endl;
+            // cout << "gamma_ensemble[0][" << cen << "][" << tp1 << "] = " << gamma_ensemble[0][cen][tp1] << endl;
+            gamma_ensemble_err[0][cen][tp1] = error_add(y_err_combined[4 + (4 * tp1)], y_err_combined[3 + (4 * tp1)]);
+            gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso[tp1] / 100.0;
+        }
+
+        
+    }
+
+    // temp_profile_QQcut->Add(temp_profile_QQcut_anti);
+    // double x_combined_QQcut[10] = {0.}, x_err_combined_QQcut[10] = {0.}, y_combined_QQcut[10] = {0.}, y_err_combined_QQcut[10] = {0.};
+    // if (eff_corr)
+    // {
+    //     temp_profile_err_QQcut->Add(temp_profile_err_QQcut_anti);
+    //     for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
+    //     {
+    //         x_combined_QQcut[i - 1] = i;
+    //         y_combined_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
+    //         y_err_combined_QQcut[i - 1] = temp_profile_err_QQcut->GetBinError(i);
+    //     }
+    // }
+    // else{
+    //     for (int i = 1; i <= temp_profile_QQcut->GetNbinsX(); i++)
+    //     {
+    //         x_combined_QQcut[i - 1] = i;
+    //         y_combined_QQcut[i - 1] = temp_profile_QQcut->GetBinContent(i);
+    //         y_err_combined_QQcut[i - 1] = temp_profile_QQcut->GetBinError(i);
+    //     }
+    // }
+
+    // TGraphErrors *temp_graph_combined_QQcut = new TGraphErrors(n_bins_QQcut, x_combined_QQcut, y_combined_QQcut, x_err_combined_QQcut, y_err_combined_QQcut);
+
+    output_File->cd();
+    temp_graph->Write(TString::Format("%s%d", profile_name, num));
+    // temp_graph_QQcut->Write(TString::Format("%s%d_QQcut", profile_name, num));
+    temp_graph_anti->Write(TString::Format("%s%d_anti", profile_name, num));
+    // temp_graph_QQcut_anti->Write(TString::Format("%s%d_QQcut_anti", profile_name, num));
+    temp_graph_combined->Write(TString::Format("%s%d_combined", profile_name, num));
+    // temp_graph_combined_QQcut->Write(TString::Format("%s%d_QQcut_combined", profile_name, num));
+}
 
 void extract_reso()
 {
@@ -685,11 +805,14 @@ void extract_reso()
 
     reso1[0] = calc_reso(Hist_cos->GetBinContent(2)); // for full event plane
     reso[0] = sqrt(Hist_cos->GetBinContent(1));       // for eta sub TPC
-    if(Hist_cos_EPD->GetBinContent(1) >= 0) reso[1] = sqrt(Hist_cos_EPD->GetBinContent(1));       // for eta sub EPD
-    else reso[1] = 1;
-    reso[2] = Hist_cos_EPD->GetBinContent(4);       // for eta sub EPD1
+    if (Hist_cos_EPD->GetBinContent(1) >= 0)
+        reso[1] = sqrt(Hist_cos_EPD->GetBinContent(1)); // for eta sub EPD
+    else
+        reso[1] = 1;
+    reso[2] = Hist_cos_EPD->GetBinContent(4); // for eta sub EPD1
 
-    for(int i = 0; i < 3; i++) cout << "reso[" << i << "] = " << reso[i] << endl;
+    for (int i = 0; i < 3; i++)
+        cout << "reso[" << i << "] = " << reso[i] << endl;
 
     // reso_TPC.push_back(reso[0]);
     // reso_EPD.push_back(reso[1]);
@@ -831,7 +954,7 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     float Q2_range[3][9] = {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {3.5, 3.5, 5, 5, 5, 5, 5, 5, 5}, {7.5, 5, 5, 5, 5, 5, 5, 5, 5}};
     float Q2_range_min[3][9] = {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}};
     // cout << "Q2_range_min[" << ep_option << "][" << cen << "] = " << Q2_range_min[ep_option][cen] << endl;
-    
+
     int rebin[3][9] = {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
     TString ep_option_name[3] = {"", "_EPD", "_EPD1"};
 
@@ -850,8 +973,10 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     double Xrange_delGamma[9] = {1.2, 1.2, 0.6, 1.0, 0.5, 0.4, 0.4, 0.4, 0.3};
     // double Xfitting_delGamma[9] = {0.1, 0.1, 0.3, 0.22, 0.18, 0.15, 0.05, 0.03, 0.02};
     double Xfitting_delGamma[3][9] = {{0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2}, {0.4, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2}, {0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2}};
-    double Xfitting_delGamma_min[2][3][9] = {{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0.035, 0, 0, 0, 0, 0, 0, 0}, {0, 0.02, 0, 0, 0, 0, 0, 0, 0}}, 
-                                                {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0.01, 0, 0, 0, 0, 0, 0, 0, 0}}};
+    // double Xfitting_delGamma_min[2][3][9] = {{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0.035, 0, 0, 0, 0, 0, 0, 0}, {0, 0.02, 0, 0, 0, 0, 0, 0, 0}},
+    //                                          {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0.01, 0, 0, 0, 0, 0, 0, 0, 0}}};
+    double Xfitting_delGamma_min[2][3][9] = {{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}},
+                                             {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}}};
     char printname5[200];
     sprintf(printname5, "cen%d.ese.parent.Q2range%d.rebin%d.%s.%d.pdf", cen, Q2_range[ep_option][cen], rebin[ep_option][cen], ep_option_name[ep_option].Data(), option112);
 
@@ -865,18 +990,25 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     // p_v2parente_Q2parent_obs1, p_v2parente_Q2parent_obs2, p_v2parentw_Q2parent_obs1, p_v2parentw_Q2parent_obs2
     // p_v2parente_Q2parent_EPD_obs1, p_v2parente_Q2parent_EPD_obs2, p_v2parentw_Q2parent_EPD_obs1, p_v2parentw_Q2parent_EPD_obs2
     // p_v2parente_Q2parent_EPD1_obs1, p_v2parente_Q2parent_EPD1_obs2
-    TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2parente_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
-    TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2parente_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
-    TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2parentw_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
-    TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2parentw_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
-    
+    // TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2parente_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
+    // TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2parente_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
+    // TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2parentw_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
+    // TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2parentw_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
+
+    TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2e_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
+    TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2e_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
+    TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2w_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
+    TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2w_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
+
     // cout << "p_v2_Q_obs1 entries = " << p_v2_Q_obs1->GetEntries() << endl;
     // cout << "p_v2w_Q_obs1 entries = " << p_v2w_Q_obs1->GetEntries() << endl;
 
     p_v2_Q_obs1->Scale(1);
-    if(ep_option <= 1) p_v2_Q_obs1->Add(p_v2w_Q_obs1);
+    if (ep_option <= 1)
+        p_v2_Q_obs1->Add(p_v2w_Q_obs1);
     p_v2_Q_obs2->Scale(1);
-    if(ep_option <= 1) p_v2_Q_obs2->Add(p_v2w_Q_obs2);
+    if (ep_option <= 1)
+        p_v2_Q_obs2->Add(p_v2w_Q_obs2);
 
     // cout << "after addition p_v2_Q_obs1 entries = " << p_v2_Q_obs1->GetEntries() << endl;
 
@@ -884,8 +1016,8 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     // cout << "p_v2_Q_obs_new (PROJECTION) entries = " << p_v2_Q_obs_new->GetEntries() << endl;
     int Nbin = p_v2_Q_obs1->GetNbinsX();
     int Nbin_min = p_v2_Q_obs1->GetXaxis()->FindBin(Q2_range_min[ep_option][cen]);
-    
-    for (int i = (Nbin_min-1); i < Nbin; i++)
+
+    for (int i = (Nbin_min - 1); i < Nbin; i++)
     {
         float cont = p_v2_Q_obs2->GetBinContent(i + 1);
         float err = p_v2_Q_obs1->GetBinError(i + 1);
@@ -901,12 +1033,14 @@ void Q2_parent_results(int cen, int ep_option, int option112)
         else
             res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]));
 
-        if(ep_option <= 1) res_q = sqrt(res_q);
+        if (ep_option <= 1)
+            res_q = sqrt(res_q);
 
         p_v2_Q_obs_new->SetBinContent(i + 1, cont / res_q / 100.);
         p_v2_Q_obs_new->SetBinError(i + 1, err / res_q / 100.);
 
-        if(cen == 8 && ep_option == 0 && option112 == 0 && (cont / res_q / 100.) != 0){
+        if (cen == 8 && ep_option == 0 && option112 == 0 && (cont / res_q / 100.) != 0)
+        {
             // cout << "cont = " << cont << endl;
             // cout << "err = " << err << endl;
             // cout << "res_q = " << res_q << endl;
@@ -925,14 +1059,14 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     Parity_Q_obs2->Add(Parity_w_Q_obs2);
 
     int index_for_data[12] = {3, 4, 7, 8, 15, 16, 19, 20, 27, 28, 31, 32};
-    TH1 *Parity_Q_ss1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_ss1", index_for_data[0 + 2*option112 + 4 * ep_option], index_for_data[0 + 2*option112 + 4 * ep_option]);
-    TH1 *Parity_Q_os1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_os1", index_for_data[1 + 2*option112 + 4 * ep_option], index_for_data[1 + 2*option112 + 4 * ep_option]);
-    TH1 *Parity_Q_ss2 = (TH1 *)Parity_Q_obs2->ProjectionY("Parity_Q_ss2", index_for_data[0 + 2*option112 + 4 * ep_option], index_for_data[0 + 2*option112 + 4 * ep_option]);
-    TH1 *Parity_Q_os2 = (TH1 *)Parity_Q_obs2->ProjectionY("Parity_Q_os2", index_for_data[1 + 2*option112 + 4 * ep_option], index_for_data[1 + 2*option112 + 4 * ep_option]);
+    TH1 *Parity_Q_ss1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_ss1", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
+    TH1 *Parity_Q_os1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_os1", index_for_data[1 + 2 * option112 + 4 * ep_option], index_for_data[1 + 2 * option112 + 4 * ep_option]);
+    TH1 *Parity_Q_ss2 = (TH1 *)Parity_Q_obs2->ProjectionY("Parity_Q_ss2", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
+    TH1 *Parity_Q_os2 = (TH1 *)Parity_Q_obs2->ProjectionY("Parity_Q_os2", index_for_data[1 + 2 * option112 + 4 * ep_option], index_for_data[1 + 2 * option112 + 4 * ep_option]);
     TH1 *Parity_Q_ss = (TH1 *)Parity_Q_ss1->Clone();
     TH1 *Parity_Q_os = (TH1 *)Parity_Q_os1->Clone();
 
-    for (int i = (Nbin_min-1); i < Nbin; i++)
+    for (int i = (Nbin_min - 1); i < Nbin; i++)
     {
         float res_q = 1;
 
@@ -949,12 +1083,14 @@ void Q2_parent_results(int cen, int ep_option, int option112)
 
         if (Parity_Q_ss2->GetBinCenter(i + 1) < Q2_range[ep_option][cen])
             res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Parity_Q_ss2->GetBinCenter(i + 1)));
-        else{
+        else
+        {
             res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]));
             // if(ep_option == 1) cout << "p_res->GetBinContent(41) = " << p_res->GetBinContent(41) << endl;
         }
-        
-        if(ep_option <= 1) res_q = sqrt(res_q);
+
+        if (ep_option <= 1)
+            res_q = sqrt(res_q);
 
         // if(ep_option == 1) cout << "Q2_range[ep_option][cen] = " << Q2_range[ep_option][cen] << ", bin center = " << Parity_Q_ss2->GetBinCenter(i + 1) << endl;
 
@@ -968,7 +1104,8 @@ void Q2_parent_results(int cen, int ep_option, int option112)
         Parity_Q_os->SetBinContent(i + 1, cont / res_q / 100.);
         Parity_Q_os->SetBinError(i + 1, err / res_q / 100.);
 
-        if(cen == 8 && ep_option == 0 && (cont / res_q / 100.) != 0){
+        if (cen == 8 && ep_option == 0 && (cont / res_q / 100.) != 0)
+        {
             // cout << "cont = " << cont << endl;
             // cout << "err = " << err << endl;
             // cout << "res_q = " << res_q << endl;
@@ -980,9 +1117,10 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     // rebin the data, three choices...
     const float diff = Q2_range[ep_option][cen] - Q2_range_min[ep_option][cen];
     const int N_bins = diff * 10 / rebin[ep_option][cen];
-    if(cen == 8 && ep_option == 0 && option112 == 0) {
+    if (cen == 8 && ep_option == 0 && option112 == 0)
+    {
         // cout << "Q2_range[" << ep_option << "][" << cen << "] = " << Q2_range[ep_option][cen] << endl;
-        // cout << "Q2_range_min[" << ep_option << "][" << cen << "] = " << Q2_range_min[ep_option][cen] << endl; 
+        // cout << "Q2_range_min[" << ep_option << "][" << cen << "] = " << Q2_range_min[ep_option][cen] << endl;
         // cout << "diff = " << diff << endl;
         // cout << "rebin = " << rebin[ep_option][cen] << endl;
         // cout << " N_bins = " << N_bins << endl;
@@ -1147,8 +1285,10 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     Parity_Q_ss->SetMinimum(-YRangeMax_ew_Q2[cen]);
     Parity_Q_ss->GetXaxis()->SetTitle("Q_{2}^{2}");
     Parity_Q_ss->GetXaxis()->CenterTitle();
-    if(option112 == 0) Parity_Q_ss->GetYaxis()->SetTitle("#gamma^{112}");
-    if(option112 == 1) Parity_Q_ss->GetYaxis()->SetTitle("#gamma^{132}");
+    if (option112 == 0)
+        Parity_Q_ss->GetYaxis()->SetTitle("#gamma^{112}");
+    if (option112 == 1)
+        Parity_Q_ss->GetYaxis()->SetTitle("#gamma^{132}");
     Parity_Q_ss->Draw();
     Parity_Q_os->SetLineColor(4);
     Parity_Q_os->SetMarkerColor(4);
@@ -1208,8 +1348,10 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     histGraph2->GetYaxis()->CenterTitle();
     histGraph2->GetXaxis()->SetTitle("v_{2, parent}");
     histGraph2->GetXaxis()->CenterTitle();
-    if(option112 == 0) histGraph2->GetYaxis()->SetTitle("#Delta#gamma^{112}");
-    if(option112 == 1) histGraph2->GetYaxis()->SetTitle("#Delta#gamma^{132}");
+    if (option112 == 0)
+        histGraph2->GetYaxis()->SetTitle("#Delta#gamma^{112}");
+    if (option112 == 1)
+        histGraph2->GetYaxis()->SetTitle("#Delta#gamma^{132}");
     histGraph2->GetXaxis()->SetNdivisions(6);
     histGraph2->GetYaxis()->SetNdivisions(605);
     // histGraph2->GetYaxis()->SetLabelSize(lsize * 1.0);
@@ -1266,11 +1408,13 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     legend2->SetLineColor(0);
     legend2->SetBorderSize(0);
     legend2->SetLineStyle(3);
-    if(option112 == 0) legend2->AddEntry(g112_v2_2, "#Delta#gamma_{112}", "p");
-    if(option112 == 1) legend2->AddEntry(g112_v2_2, "#Delta#gamma_{132}", "p");
-    legend2->AddEntry((TObject*)0, TString::Format("ESE signal(Q2) = %e +/- %e", fit_sig2, fit_sig2_err).Data(), "");
-    legend2->Draw(); 
- 
+    if (option112 == 0)
+        legend2->AddEntry(g112_v2_2, "#Delta#gamma_{112}", "p");
+    if (option112 == 1)
+        legend2->AddEntry(g112_v2_2, "#Delta#gamma_{132}", "p");
+    legend2->AddEntry((TObject *)0, TString::Format("ESE signal(Q2) = %e +/- %e", fit_sig2, fit_sig2_err).Data(), "");
+    legend2->Draw();
+
     gamma[option112][cen][ep_option] = fit_sig2;
     gamma_err[option112][cen][ep_option] = fit_sig2_err;
 
@@ -1330,11 +1474,11 @@ void read_npart()
     string line_text;
     while (myfile >> a)
     {
-        if(count % 2 == 0)
+        if (count % 2 == 0)
         {
             npart[count / 2] = a;
         }
-        else if(count % 2 == 1)
+        else if (count % 2 == 1)
         {
             npart_err[count / 2] = a;
         }
