@@ -26,7 +26,9 @@ double antilam_purity[9][18];
 double lam_yield[9][18];
 double antilam_yield[9][18];
 
-std::vector<float> parent_v2_vect[3], alltrks_v2_vect[3];
+float lam_purity_Q2[3][9][100], antilam_purity_Q2[3][9][100];
+
+std::vector<float> parent_v2_vect[3], alltrks_v2_vect[3], pionpion_v2_vect[3];
 std::vector<TString> name_options3;
 float reso_TPC[9] = {0.}, reso_EPD[9] = {0.}, reso_EPD1[9] = {0.};
 float reso_TPC_err[9] = {0.}, reso_EPD_err[9] = {0.}, reso_EPD1_err[9] = {0.};
@@ -48,15 +50,16 @@ void profile_divide_by_reso_corr_by_bkg(const char *profile_name, int cen);
 
 void Q2_parent_results(int cen, int ep_option, int option112);
 
-void plotting_TGraph_Helper(const char* title, const char* x_title, const char* y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2 = NULL, float *y2_err = NULL, float *y3 = NULL, float *y3_err = NULL);
+void plotting_TGraph_Helper(const char *title, const char *x_title, const char *y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2 = NULL, float *y2_err = NULL, float *y3 = NULL, float *y3_err = NULL);
 
-int min_cen = 0;
-int max_cen = 8;
+int min_cen = 3;
+int max_cen = 5;
 
 void downstream_analysis()
 {
     read_sig();
     read_npart();
+    read_purity_Q2();
 
     name_options3.push_back("TPC");
     name_options3.push_back("EPD");
@@ -117,6 +120,18 @@ void downstream_analysis()
                 result_file << parent_v2_vect[w].at(2 * q) << ", ";
             else
                 result_file << parent_v2_vect[w].at(2 * q) << "}; \n";
+        }
+
+        result_file << "const float v2_averaged_pairpion_" << name_options3.at(w) << "[9] = {";
+
+        for (int q = 0; q <= (max_cen - min_cen); q++)
+        {
+            // if(q != max_cen) result_file << parent_v2_vect[w].at(q) << ", ";
+            // else result_file << parent_v2_vect[w].at(q) << "}; \n";
+            if (q != max_cen)
+                result_file << pionpion_v2_vect[w].at(2 * q) << ", ";
+            else
+                result_file << pionpion_v2_vect[w].at(2 * q) << "}; \n";
         }
     }
 
@@ -278,12 +293,15 @@ void downstream_analysis()
     result_file.close();
 }
 
-void plotting_TGraph_Helper(const char* title, const char* x_title, const char* y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2, float *y2_err, float *y3, float *y3_err){
+void plotting_TGraph_Helper(const char *title, const char *x_title, const char *y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2, float *y2_err, float *y3, float *y3_err)
+{
     TGraphErrors *tmp_graph1 = new TGraphErrors(npts, x, y1, x_err, y1_err);
     // cout << "y1_err[0] = " << y1_err[0] << endl;
     // cout << "y2_err[0] = " << y2_err[0] << endl;
-    if(y2 != NULL) TGraphErrors *tmp_graph2 = new TGraphErrors(npts, x, y2, x_err, y2_err);
-    if(y3 != NULL) TGraphErrors *tmp_graph3 = new TGraphErrors(npts, x, y3, x_err, y3_err);
+    if (y2 != NULL)
+        TGraphErrors *tmp_graph2 = new TGraphErrors(npts, x, y2, x_err, y2_err);
+    if (y3 != NULL)
+        TGraphErrors *tmp_graph3 = new TGraphErrors(npts, x, y3, x_err, y3_err);
 
     output_File2->cd();
     TCanvas c1(title, title, 1500, 800);
@@ -294,14 +312,16 @@ void plotting_TGraph_Helper(const char* title, const char* x_title, const char* 
     tmp_graph1->GetXaxis()->SetTitle(x_title);
     tmp_graph1->GetYaxis()->SetTitle(y_title);
     tmp_graph1->Draw("AP");
-    if(y2 != NULL){
+    if (y2 != NULL)
+    {
         // cout << "plotting second" << endl;
         tmp_graph2->SetMarkerStyle(kFullCircle);
         tmp_graph2->SetMarkerColor(kRed);
         tmp_graph2->SetLineColor(kRed);
         tmp_graph2->Draw("SAMES P");
     }
-    if(y3 != NULL){
+    if (y3 != NULL)
+    {
         tmp_graph3->SetMarkerStyle(kFullCircle);
         tmp_graph3->SetMarkerColor(kBlue);
         tmp_graph3->SetLineColor(kBlue);
@@ -348,6 +368,13 @@ void downstream_analysis_bycen(int cen)
         // alltrks_v2_vect[jk].push_back(temp_vec.at(0));
         alltrks_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
         alltrks_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
+        temp_vec.clear();
+
+        sprintf(fname, "Hist_v2pion_pt_%s_obs5", name_options3.at(jk).Data());
+        temp_vec = Rebin_v2_Data(fname, fname, cen, jk);
+        // alltrks_v2_vect[jk].push_back(temp_vec.at(0));
+        pionpion_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
+        pionpion_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
         temp_vec.clear();
     }
     //     // vector<float> temp_vec = Rebin_v2_Data("Hist_v2parent_pt_obs5", "Hist_v2parent_pt_obs5", cen);
@@ -745,7 +772,7 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr)
 
             float tmp_error1 = error_add(y_err_combined[4 + (8 * tp1)], y_err_combined[3 + (8 * tp1)]);
             float tmp_erorr2 = error_add(y_err_combined[8 + (8 * tp1)], y_err_combined[7 + (8 * tp1)]);
-            gamma_ensemble_err[1][cen][tp1] = (float) error_add(tmp_error1, tmp_erorr2) / 2.0;
+            gamma_ensemble_err[1][cen][tp1] = (float)error_add(tmp_error1, tmp_erorr2) / 2.0;
             gamma_ensemble_err[1][cen][tp1] = gamma_ensemble_err[1][cen][tp1] / reso[tp1] / 100.0;
 
             // cout << "gamma_ensemble[1][" << cen << "][" << tp1 << "] = " << gamma_ensemble[1][cen][tp1] << endl;
@@ -761,8 +788,6 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr)
             gamma_ensemble_err[0][cen][tp1] = error_add(y_err_combined[4 + (4 * tp1)], y_err_combined[3 + (4 * tp1)]);
             gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso[tp1] / 100.0;
         }
-
-        
     }
 
     // temp_profile_QQcut->Add(temp_profile_QQcut_anti);
@@ -1485,4 +1510,66 @@ void read_npart()
 
         count++;
     }
+}
+
+void read_purity_Q2()
+{
+    for (int curr_c = 0; curr_c < 9; curr_c++)
+    {
+        std::fstream myfile(TString::Format("./Fit_and_subtract/Q2_purity/output_cen%d.txt", curr_c), std::ios_base::in);
+
+        // cout << "Centrality = " << curr_c << endl;
+        
+        float a = 0;
+        int count = 0, count2 = 0;
+        string line_text;
+        
+        while (getline(myfile, line_text))
+        {
+            
+            istringstream ss(line_text);
+            while (ss >> a)
+            {
+                if (a < 0)
+                    break;
+
+                // cout << a << ", ";
+
+                lam_purity_Q2[count][curr_c][count2] = a;
+            }
+            // cout << endl;
+            count++;
+            count2 = 0;
+        }
+
+        std::fstream myfile2(TString::Format("./Fit_and_subtract/Q2_purity/output_cen%d_anti.txt", curr_c), std::ios_base::in);
+
+        // cout << "Centrality = " << curr_c << endl;
+        
+        a = 0;
+        count = 0;
+        count2 = 0;
+        line_text = "";
+        
+        while (getline(myfile2, line_text))
+        {
+            
+            istringstream ss2(line_text);
+            while (ss2 >> a)
+            {
+                if (a < 0)
+                    break;
+
+                // cout << a << ", ";
+
+                antilam_purity_Q2[count][curr_c][count2] = a;
+            }
+            // cout << endl;
+            count++;
+            count2 = 0;
+        }
+    }
+
+    myfile.close();
+    myfile2.close();
 }

@@ -66,7 +66,7 @@ void compute_purity_stats(int cen, double bmin_value, double bmax_value, TString
     double sl_beg = 1.108;
     double sl_end = 1.136;
 
-    int max_bins_to_fit = 55;
+    int max_bins_to_fit = 80;
 
     for (int b = 1; b <= max_bins_to_fit; b++)
     {
