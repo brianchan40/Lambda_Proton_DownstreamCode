@@ -8,73 +8,15 @@
 #include "Rebin_v2_Data.C"
 #include <TGraphErrors>
 #include <error_calc.C>
+#include <downstream_analysis.h>
 
 using namespace std;
 
-// Settings for Macro
-const char *method_name = "KFParticle";
-int min_cen = 0;
-int max_cen = 8;
-
-// Global Files
-TFile *file, *output_File; // Files by centrality; file --> input; output_File --> output
-TFile *output_File2;       // output File for all centralities in range
-ofstream result_file, gamma_results;      // text File output for all centralities in range
-
-// Global Variables for Functional Purposes
-float reso[4] = {0.}, reso1[3] = {0.}; // reso = Sub EP Reso; reso1 = Full EP Reso
-float cen9_eff[9] = {75, 65, 55, 45, 35, 25, 15, 7.5, 2.5};
-float cen9_err_eff[9] = {0.};
-double npart[9] = {0.}, npart_err[9] = {0.};
-double lam_purity[9][18], antilam_purity[9][18], lam_yield[9][18], antilam_yield[9][18];
-float lam_purity_Q2[3][9][100], antilam_purity_Q2[3][9][100];
-std::vector<TString> name_options3;
-
-// Global Variables for Plotting all Centralities
-std::vector<float> parent_v2_vect[3], alltrks_v2_vect[3], pionpion_v2_vect[3]; // Getting average v2
-std::vector<float> proton_v2_vect, lam_v2_vect;
-float delta[9], delta_err[9];
-float reso_TPC[9] = {0.}, reso_EPD[9] = {0.}, reso_EPD1[9] = {0.};
-float reso_TPC_err[9] = {0.}, reso_EPD_err[9] = {0.}, reso_EPD1_err[9] = {0.};
-float gamma[2][9][3], gamma_err[2][9][3];
-float gamma_ensemble[2][9][3], gamma_ensemble_err[2][9][3];
-float v2_lam[9][3], v2_p[9][3], v2_lam_err[9][3], v2_p_err[9][3];
-
-// Beginning of Macro, Establishing Analysis
-void initialize_macro();
-void read_sig();
-void read_npart();
-void read_purity_Q2();
-
-// Centrality by Centrality Analysis
-void downstream_analysis_bycen(int cen);
-//
-void initialize_each_cen(int cen);
-void extract_reso();
-double calc_reso(double res);
-double chi(double res);
-double resEventPlane(double chi);
-//
-void organize_ensemble_average_results(int cen);
-void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bool QQ_cut = false);
-//
-void obtain_v2_average(int cen);
-void profile_divide_by_reso_fit_by_const(const char *profile_name, int cen); // used for getting average v2(eta)
-//
-void Q2_parent_results(int cen, int ep_option, int option112);
-//
-// Old method that is not used:
-void old_ptsplit_method(int cen);
-void profile_divide_by_reso_corr_by_bkg(const char *profile_name, int cen);
-
-// Wrapping up Analysis to put results from all centralities together
-void organize_and_plot_v2_results();
-void organize_and_plot_gamma_results();
-void plotting_TGraph_Helper(const char *title, const char *x_title, const char *y_title, int npts, float *x, float *x_err, float *y1, float *y1_err, float *y2 = NULL, float *y2_err = NULL, float *y3 = NULL, float *y3_err = NULL);
-
 void downstream_analysis()
 {
-    initialize_macro();
+    // 1. Read in purity statistics for Lambdas and Protons 
+    // 2. Create Files to store results across centralities
+    initialize_macro(); 
 
     for (int i = min_cen; i <= max_cen; i++)
     {
@@ -519,7 +461,9 @@ void plotting_TGraph_Helper(const char *title, const char *x_title, const char *
 
 void downstream_analysis_bycen(int cen)
 {
-    initialize_each_cen(cen); // Open Files and Obtain Resolution Info
+    // 1. Create Files to store Centrality Specific Results
+    // 2. Store Resolution info
+    initialize_each_cen(cen);
 
     organize_ensemble_average_results(cen);
     obtain_v2_average(cen);
@@ -615,39 +559,32 @@ double resEventPlane(double chi)
 
 void organize_ensemble_average_results(int cen)
 {
-    // grabs lam and antilam results, correct by background, combined, and store resolution corrected results in array
+    // Without Efficiency Corrections
     // profile_divide_by_reso("Parity_int_obs", cen, false);
-    profile_divide_by_reso("Parity_int_obs", cen, true);
     // profile_divide_by_reso("Parity_int_ss_obs", cen, false);
-    profile_divide_by_reso("Parity_int_ss_obs", cen, true);
     // profile_divide_by_reso("Delta_int_ss_obs", cen, false);
+    
+    //  With Efficiency Corrections
+    profile_divide_by_reso("Parity_int_obs", cen, true);
+    profile_divide_by_reso("Parity_int_ss_obs", cen, true);
     profile_divide_by_reso("Delta_int_ss_obs", cen, true);
 
+    // With Efficiency Corrections and QQ > 0.8 Cut
     profile_divide_by_reso("Parity_int_obs", cen, true, true);
     profile_divide_by_reso("Parity_int_ss_obs", cen, true, true);
     profile_divide_by_reso("Delta_int_ss_obs", cen, true, true);
-    // can add _QQcut if that is desired
 }
 
 void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bool QQ_cut)
 {
-    cout << profile_name << endl;
+    // grabs lam and antilam results, correct by background, combined, and store resolution corrected results in array
+    
     const int n_entries = 25;
-
-    char *qq_cut = "";
-    if (QQ_cut)
-    {
-        qq_cut = "_QQcut";
-    }
-
-    int num = 0;
-    if (eff_corr)
-        num = 3;
-    else
-        num = 1;
-
+    char *qq_cut = (QQ_cut) ? "_QQcut" : "";
+    int num = (eff_corr) ? 3 : 1;
     cout << "profile_divide_by_reso Profile Name = " << TString::Format("%s%d%s", profile_name, num, qq_cut) << endl;
 
+    //////////////////////////// Lambda Results ////////////////////////////
     TProfile *temp_profile = (TProfile *)file->Get(TString::Format("%s%d%s", profile_name, num, qq_cut));
     TProfile *temp_profile_rot = (TProfile *)file->Get(TString::Format("%s%d%s_rot", profile_name, num, qq_cut));
     int n_bins = temp_profile->GetNbinsX();
@@ -657,41 +594,25 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bo
 
     temp_profile->Add(temp_profile, temp_profile_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
     
+    // To get errors that are not affected by efficiency corrections
     TProfile *temp_profile_err = (TProfile *)file->Get(TString::Format("%s%d%s", profile_name, 1, qq_cut));
     TProfile *temp_profile_err_rot = (TProfile *)file->Get(TString::Format("%s%d%s_rot", profile_name, 1, qq_cut));
     temp_profile_err->Sumw2();
     temp_profile_err_rot->Sumw2();
 
-    cout << "temp_profile->GetNbinsX() = " << temp_profile->GetNbinsX() << endl;
-
-    if (eff_corr)
+    if (eff_corr) temp_profile_err->Add(temp_profile_err, temp_profile_err_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
+    for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
     {
-        cout << "temp_profile->GetBinContent(1) = " << temp_profile->GetBinContent(1) << endl;
-
-        temp_profile_err->Add(temp_profile_err, temp_profile_err_rot, 1.0 / lam_purity[cen][17], -(1.0 - lam_purity[cen][17]) / lam_purity[cen][17]);
-
-        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-        {
-            x[i - 1] = i;
-            y[i - 1] = temp_profile->GetBinContent(i);
-            y_err[i - 1] = temp_profile_err->GetBinError(i);
-
-            cout << "y[" << i - 1 << "] = " << y[i - 1] << endl;
-        }
-    }
-    else
-    {
-        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-        {
-            x[i - 1] = i;
-            y[i - 1] = temp_profile->GetBinContent(i);
-            y_err[i - 1] = temp_profile->GetBinError(i);
-        }
+        x[i - 1] = i;
+        y[i - 1] = temp_profile->GetBinContent(i);
+        y_err[i - 1] = (eff_corr)? temp_profile_err->GetBinError(i) : temp_profile->GetBinError(i);
     }
 
     TGraphErrors *temp_graph = new TGraphErrors(n_bins, x, y, x_err, y_err);
 
-    // antilambda
+    //////////////////////////// End of Lambda Results ////////////////////////////    
+
+    //////////////////////////// AntiLambda Results ////////////////////////////
     TProfile *temp_profile_anti = (TProfile *)file->Get(TString::Format("%s%d%s_anti", profile_name, num, qq_cut));
     TProfile *temp_profile_anti_rot = (TProfile *)file->Get(TString::Format("%s%d%s_anti_rot", profile_name, num, qq_cut));
     int n_bins_anti = temp_profile_anti->GetNbinsX();
@@ -701,102 +622,72 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bo
 
     temp_profile_anti->Add(temp_profile_anti, temp_profile_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
     
+    // To get errors that are not affected by efficiency corrections
     TProfile *temp_profile_anti_err = (TProfile *)file->Get(TString::Format("%s%d%s_anti", profile_name, 1, qq_cut));
     TProfile *temp_profile_err_anti_rot = (TProfile *)file->Get(TString::Format("%s%d%s_anti_rot", profile_name, 1, qq_cut));
     temp_profile_anti_err->Sumw2();
     temp_profile_err_anti_rot->Sumw2();
 
-    if (eff_corr)
+    if (eff_corr) temp_profile_anti_err->Add(temp_profile_anti_err, temp_profile_err_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
+    for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
     {
-        temp_profile_anti_err->Add(temp_profile_anti_err, temp_profile_err_anti_rot, 1.0 / antilam_purity[cen][17], -(1.0 - antilam_purity[cen][17]) / antilam_purity[cen][17]);
-
-        for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
-        {
-            x_anti[i - 1] = i;
-            y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
-            y_anti_err[i - 1] = temp_profile_anti_err->GetBinError(i);
-
-            cout << "y_anti[" << i - 1 << "] = " << y_anti[i - 1] << endl;
-        }
-    }
-    else
-    {
-        for (int i = 1; i <= temp_profile_anti->GetNbinsX(); i++)
-        {
-            x_anti[i - 1] = i;
-            y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
-            y_anti_err[i - 1] = temp_profile_anti->GetBinError(i);
-        }
+        x_anti[i - 1] = i;
+        y_anti[i - 1] = temp_profile_anti->GetBinContent(i);
+        y_anti_err[i - 1] = (eff_corr)? temp_profile_anti_err->GetBinError(i) : temp_profile_anti->GetBinError(i);
     }
 
     TGraphErrors *temp_graph_anti = new TGraphErrors(n_bins_anti, x_anti, y_anti, x_anti_err, y_anti_err);
 
+    //////////////////////////// End of AntiLambda Results ////////////////////////////
+
+    //////////////////////////// Combining Lambda and AntiLambda Results ////////////////////////////
     temp_profile->Add(temp_profile_anti);
     double x_combined[n_entries] = {0.}, x_err_combined[n_entries] = {0.}, y_combined[n_entries] = {0.}, y_err_combined[n_entries] = {0.};
-    if (eff_corr)
+    if (eff_corr) temp_profile_err->Add(temp_profile_anti_err);
+    for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
     {
-        temp_profile_err->Add(temp_profile_anti_err);
-        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-        {
-            x_combined[i - 1] = i;
-            y_combined[i - 1] = temp_profile->GetBinContent(i);
-            y_err_combined[i - 1] = temp_profile_err->GetBinError(i);
-
-            cout << "y_combined[" << i - 1 << "] = " << y_combined[i - 1] << endl;
-        }
-    }
-    else
-    {
-        for (int i = 1; i <= temp_profile->GetNbinsX(); i++)
-        {
-            x_combined[i - 1] = i;
-            y_combined[i - 1] = temp_profile->GetBinContent(i);
-            y_err_combined[i - 1] = temp_profile->GetBinError(i);   
-        }
+        x_combined[i - 1] = i;
+        y_combined[i - 1] = temp_profile->GetBinContent(i);
+        y_err_combined[i - 1] = (eff_corr)? temp_profile_err->GetBinError(i) : temp_profile->GetBinError(i);
     }
 
     TGraphErrors *temp_graph_combined = new TGraphErrors(n_bins, x_combined, y_combined, x_err_combined, y_err_combined);
 
+    //////////////////////////// End of Combining Lambda and AntiLambda Results ////////////////////////////
+
+    //////////////////////////// Recording for Cross-Centrality Analysis ////////////////////////////
     for (int tp1 = 0; tp1 < 3; tp1++)
     {
-        if (!QQ_cut)
+        if (QQ_cut) continue;
+        
+        // Gamma132 Results
+        if (profile_name == "Parity_int_obs")
         {
-            cout << "what is profile_name? " << profile_name << endl;
-            if (profile_name == "Parity_int_obs")
-            {
-                gamma_ensemble[1][cen][tp1] = (float)((y_combined[4 + (8 * tp1)] - y_combined[3 + (8 * tp1)]) + (y_combined[8 + (8 * tp1)] - y_combined[7 + (8 * tp1)])) / 2.0;
-                if (tp1 == 0)
-                    gamma_ensemble[1][cen][tp1] = gamma_ensemble[1][cen][tp1] / reso1[tp1] / 100.0;
-                else
-                    gamma_ensemble[1][cen][tp1] = gamma_ensemble[1][cen][tp1] / reso[tp1] / 100.0;
+            // Value
+            gamma_ensemble[1][cen][tp1] = (float)((y_combined[4 + (8 * tp1)] - y_combined[3 + (8 * tp1)]) + (y_combined[8 + (8 * tp1)] - y_combined[7 + (8 * tp1)])) / 2.0;
+            if (tp1 == 0) gamma_ensemble[1][cen][tp1] = gamma_ensemble[1][cen][tp1] / reso1[tp1] / 100.0;
+            else gamma_ensemble[1][cen][tp1] = gamma_ensemble[1][cen][tp1] / reso[tp1] / 100.0;
 
-                float tmp_error1 = error_add(y_err_combined[4 + (8 * tp1)], y_err_combined[3 + (8 * tp1)]);
-                float tmp_erorr2 = error_add(y_err_combined[8 + (8 * tp1)], y_err_combined[7 + (8 * tp1)]);
-                gamma_ensemble_err[1][cen][tp1] = (float)error_add(tmp_error1, tmp_erorr2) / 2.0;
-                if (tp1 == 0)
-                    gamma_ensemble_err[1][cen][tp1] = gamma_ensemble_err[1][cen][tp1] / reso1[tp1] / 100.0;
-                else
-                    gamma_ensemble_err[1][cen][tp1] = gamma_ensemble_err[1][cen][tp1] / reso[tp1] / 100.0;
+            // Error
+            float tmp_error1 = error_add(y_err_combined[4 + (8 * tp1)], y_err_combined[3 + (8 * tp1)]);
+            float tmp_erorr2 = error_add(y_err_combined[8 + (8 * tp1)], y_err_combined[7 + (8 * tp1)]);
+            gamma_ensemble_err[1][cen][tp1] = (float)error_add(tmp_error1, tmp_erorr2) / 2.0;
+            if (tp1 == 0) gamma_ensemble_err[1][cen][tp1] = gamma_ensemble_err[1][cen][tp1] / reso1[tp1] / 100.0;
+            else gamma_ensemble_err[1][cen][tp1] = gamma_ensemble_err[1][cen][tp1] / reso[tp1] / 100.0;
+        }
 
-                cout << "gamma_ensemble[1][" << cen << "][" << tp1 << "] = " << gamma_ensemble[1][cen][tp1] << endl;
-            }
-            if (profile_name == "Parity_int_ss_obs")
-            {
-                cout << "y_combined[" << 4 + (4 * tp1) << "] = " << y_combined[4 + (4 * tp1)] << endl;
-                gamma_ensemble[0][cen][tp1] = y_combined[4 + (4 * tp1)] - y_combined[3 + (4 * tp1)];
-                cout << "gamma_ensemble[0][" << cen << "][" << tp1 << "] = " << gamma_ensemble[0][cen][tp1] << endl;
-                if (tp1 == 0)
-                    gamma_ensemble[0][cen][tp1] = gamma_ensemble[0][cen][tp1] / reso1[tp1] / 100.0;
-                else
-                    gamma_ensemble[0][cen][tp1] = gamma_ensemble[0][cen][tp1] / reso[tp1] / 100.0;
-                cout << "reso1[" << tp1 << "] = " << reso1[tp1] << endl;
-                cout << "gamma_ensemble[0][" << cen << "][" << tp1 << "] = " << gamma_ensemble[0][cen][tp1] << endl;
-                gamma_ensemble_err[0][cen][tp1] = error_add(y_err_combined[4 + (4 * tp1)], y_err_combined[3 + (4 * tp1)]);
-                if (tp1 == 0)
-                    gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso1[tp1] / 100.0;
-                else
-                    gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso[tp1] / 100.0;
-            }
+        // Gamma112 Results
+        if (profile_name == "Parity_int_ss_obs")
+        {
+            // Value
+            gamma_ensemble[0][cen][tp1] = y_combined[4 + (4 * tp1)] - y_combined[3 + (4 * tp1)];
+            if (tp1 == 0) gamma_ensemble[0][cen][tp1] = gamma_ensemble[0][cen][tp1] / reso1[tp1] / 100.0;
+            else gamma_ensemble[0][cen][tp1] = gamma_ensemble[0][cen][tp1] / reso[tp1] / 100.0;
+            
+            // Error
+            gamma_ensemble_err[0][cen][tp1] = error_add(y_err_combined[4 + (4 * tp1)], y_err_combined[3 + (4 * tp1)]);
+            if (tp1 == 0) gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso1[tp1] / 100.0;
+            else gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso[tp1] / 100.0;
         }
     }
 
@@ -809,7 +700,6 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bo
     {
         if (!QQ_cut)
         {
-            // cout << "delta[" << cen << "] = " << delta[cen] << endl;
             delta[cen] = y_combined[4] - y_combined[3];
             delta[cen] = delta[cen] / 100.0;
             delta_err[cen] = error_add(y_err_combined[4], y_err_combined[3]);
