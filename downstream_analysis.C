@@ -710,6 +710,8 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bo
 
 void obtain_v2_average(int cen)
 {
+    // Get average v2 value for various particles for each centrality for correction on Q2
+
     TProfile *v2_single_lamda = (TProfile *)file->Get("v2_single_lamda");
     TProfile *v2_single_proton = (TProfile *)file->Get("v2_single_proton");
 
@@ -718,31 +720,20 @@ void obtain_v2_average(int cen)
     {
         sprintf(fname, "Hist_v2parent_pt_%s_obs5", name_options3.at(jk).Data());
         vector<float> temp_vec = Rebin_v2_Data(fname, fname, cen, jk);
-        // parent_v2_vect[jk].push_back(temp_vec.at(0));
         parent_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
         parent_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
         temp_vec.clear();
 
         sprintf(fname, "Hist_v2_pt_obs2_%s_alltrks", name_options3.at(jk).Data());
         temp_vec = Rebin_v2_Data(fname, fname, cen, jk);
-        // alltrks_v2_vect[jk].push_back(temp_vec.at(0));
         alltrks_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
         alltrks_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
         temp_vec.clear();
 
-        // sprintf(fname, "Hist_v2pion_pt_%s_obs5", name_options3.at(jk).Data());
-        // temp_vec = Rebin_v2_Data(fname, fname, cen, jk);
-        // pionpion_v2_vect[jk].push_back(temp_vec.at(1) / 100.0);
-        // pionpion_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
-        // temp_vec.clear();
-
         sprintf(fname, "Hist_v2pion_pt_%s_obs5", name_options3.at(jk).Data());
-        cout << fname << endl;
         temp_vec = Rebin_v2_Data(fname, fname, cen, 3);
-        cout << "sqrt(temp_vec.at(1)) = " << sqrt(fabs(temp_vec.at(1))) << endl;
         pionpion_v2_vect[jk].push_back(sqrt(fabs(temp_vec.at(1))));
         pionpion_v2_vect[jk].push_back(temp_vec.at(2));
-        // cout << temp_vec.at(1) / 100.0 << endl;
         temp_vec.clear();
 
         v2_lam[cen][jk] = v2_single_lamda->GetBinContent(jk);
@@ -762,18 +753,16 @@ void obtain_v2_average(int cen)
     proton_v2_vect.push_back(temp_vec.at(2) / 100.0);
     temp_vec.clear();
 
+    // Alternate Method to get Average v2: by fitting v2(eta) dist
     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5", cen);
     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5_rot", cen);
 }
 
 void profile_divide_by_reso_fit_by_const(const char *profile_name, int cen)
 {
-    cout << profile_name << endl;
-
     TProfile *temp_profile = (TProfile *)file->Get(profile_name);
 
     temp_profile->Scale(1.0 / reso);
-    // cout << "reso = " << reso << endl;
     TF1 *temp_func = new TF1("temp_func", "[0]", -5, 5);
     temp_profile->Fit(temp_func, "QR");
     result_file << profile_name << " Fit Parameter = " << temp_func->GetParameter(0) << "\n";
@@ -784,14 +773,10 @@ void profile_divide_by_reso_fit_by_const(const char *profile_name, int cen)
 
 void Q2_parent_results(int cen, int ep_option, int option112)
 {
-
+    //////////////////////////////// Initial Setup ////////////////////////////////
     bool pion_results = true;
-
-    //////////////// Setting Up for Function ////////////////
-    // float Q2_range[3][9] = {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {2, 3.5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
-    float Q2_range[3][9] = {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {5, 5, 5, 5, 10, 10, 10, 10, 10}, {5, 5, 5, 5, 10, 10, 10, 10, 10}};
-    // int rebin[3][9] = {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
-    int rebin[3][9] = {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
+    float Q2_range[3][9] = (pion_results)? {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {5, 5, 5, 5, 10, 10, 10, 10, 10}, {5, 5, 5, 5, 10, 10, 10, 10, 10}} : {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {2, 3.5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
+    int rebin[3][9] = (pion_results)? {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}} : {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
     TString ep_option_name[3] = {"", "_EPD", "_EPD1"};
 
     // resolution
@@ -807,17 +792,17 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     double Yrange_delGamma[9] = {1, 0.4, 0.1, 0.1, 0.04, 0.02, 0.02, 0.02, 0.02};
     double Xrange_delGamma[9] = {1.2, 1.2, 0.6, 1.0, 0.5, 0.4, 0.4, 0.4, 0.3};
     double Xfitting_delGamma[3][9] = {{0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2}, {0.4, 0.1, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2}, {0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2, 0.2}};
-    // double Xfitting_delGamma_min[2][3][9] = {{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0.035, 0, 0, 0, 0, 0, 0, 0}, {0, 0.02, 0, 0, 0, 0, 0, 0, 0}},
-    //                                          {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0.01, 0, 0, 0, 0, 0, 0, 0, 0}}};
     double Xfitting_delGamma_min[2][3][9] = {{{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}},
                                              {{0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}, {0, 0, 0, 0, 0, 0, 0, 0, 0}}};
     char printname5[200];
     sprintf(printname5, "cen%d.ese.parent.Q2range%d.rebin%d.%s.%d.pdf", cen, Q2_range[ep_option][cen], rebin[ep_option][cen], ep_option_name[ep_option].Data(), option112);
     ////////////////////////////////////////////////////////////////////////////////
 
-    //////////////////////////////// Analysis ////////////////////////////////
 
-    //////// Resolution: p_cos_Q2, p_cos_Q2_EPD, p_cos_Q2_EPD1
+    // Beginning of Analysis:
+
+    //////////////////////// Resolution ////////////////////////
+    // p_cos_Q2, p_cos_Q2_EPD, p_cos_Q2_EPD1
     if (!pion_results)
         TProfile *p_res = (TProfile *)file->Get(TString::Format("p_cos_Q2%s", ep_option_name[ep_option].Data()).Data());
     if (pion_results)
@@ -826,9 +811,12 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     p_res->Fit("f_res", "0Q", "", 0, Q2_range[ep_option][cen]);
 
     cout << "resolution loaded" << endl;
+    //////////////////////// End of Resolution ////////////////////////
 
-    //////// Obtaining v2 plots: 1st Set - Lambda-Proton pair v2; 2nd set - charged-particles-pair v2; 3rd set - single charged particle v2; 4th set - pion-pair v2
-
+    //////////////////////// Obtaining v2(q) plots ////////////////////////
+    
+    //// 1st Set - Lambda-Proton pair v2; 2nd set - charged-particles-pair v2; 3rd set - single charged particle v2; 4th set - pion-pair v2
+    
     // TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2parente_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
     // TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2parente_Q2parent%s_obs2", ep_option_name[ep_option].Data()));
     // TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2parentw_Q2parent%s_obs1", ep_option_name[ep_option].Data()));
@@ -850,81 +838,29 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2w_Q2%s_obs2", ep_option_name[ep_option].Data()));
 
     p_v2_Q_obs1->Scale(1);
-    if (ep_option <= 1)
-        p_v2_Q_obs1->Add(p_v2w_Q_obs1);
+    if (ep_option <= 1) p_v2_Q_obs1->Add(p_v2w_Q_obs1);
     p_v2_Q_obs2->Scale(1);
-    if (ep_option <= 1)
-        p_v2_Q_obs2->Add(p_v2w_Q_obs2);
+    if (ep_option <= 1) p_v2_Q_obs2->Add(p_v2w_Q_obs2);
     cout << "after addition p_v2_Q_obs1 entries = " << p_v2_Q_obs1->GetEntries() << endl;
 
     TH1 *p_v2_Q_obs_new = (TH1 *)p_v2_Q_obs1->ProjectionX(TString::Format("p_v2_Q_obs_new%s%d", ep_option_name[ep_option].Data(), option112));
 
     int Nbin = p_v2_Q_obs1->GetNbinsX();
-    // cout << "Nbin = " << Nbin << endl;
     for (int i = 0; i < Nbin; i++)
     {
-        // cout << "i = " << i << endl;
         float cont = p_v2_Q_obs2->GetBinContent(i + 1);
         float err = p_v2_Q_obs1->GetBinError(i + 1);
-        float res_q = 1;
-
-        if (p_v2_Q_obs2->GetBinCenter(i + 1) < Q2_range[ep_option][cen])
-        {
-            res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(p_v2_Q_obs2->GetBinCenter(i + 1)));
-
-            int i_tmp = i + 2;
-            int i_tmp2 = i;
-
-            while (res_q <= 0)
-            {
-                res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(p_v2_Q_obs2->GetBinCenter(i_tmp)));
-                i_tmp++;
-
-                if ((res_q <= 0) && (i_tmp2 > 0)){
-                    res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(p_v2_Q_obs2->GetBinCenter(i_tmp2)));
-                    i_tmp2--;
-                }
-
-                if (i_tmp > (i+7)) break;
-            }
-        }
-        else{
-            res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]));
-
-            int i_tmp = p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]) + 1;
-            int i_tmp2 = p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]) - 1;
-
-            while (res_q <= 0)
-            {
-                res_q = p_res->GetBinContent(i_tmp);
-                i_tmp++;
-
-                if ((res_q <= 0) && (i_tmp2 > 0)){
-                    res_q = p_res->GetBinContent(i_tmp2);
-                    i_tmp2--;
-                }
-
-                if (i_tmp > (i+7)) break;
-            }
-        }
-
-        if (ep_option <= 1)
-            res_q = sqrt(res_q);
+        
+        float res_q = finding_res_from_resq(p_v2_Q_obs2, p_res, i, Q2_range[ep_option][cen]);
+        if (ep_option <= 1) res_q = sqrt(res_q);
 
         p_v2_Q_obs_new->SetBinContent(i + 1, cont / res_q / 100.);
         p_v2_Q_obs_new->SetBinError(i + 1, err / res_q / 100.);
-
-        // if (cen == 8 && ep_option == 0 && option112 == 0 && (cont / res_q / 100.) != 0)
-        // {
-        // cout << "cont = " << cont << endl;
-        // cout << "err = " << err << endl;
-        // cout << "res_q = " << res_q << endl;
-        // cout << "cont / res_q / 100. = " << cont / res_q / 100. << endl;
-        // cout << "err / res_q / 100. = " << err / res_q / 100. << endl;
-        // }
     }
 
-    //////// Obtaining delta gamma plots:
+    //////////////////////// End of Obtaining v2(q) plots ////////////////////////
+
+    //////////////////////// Obtaining delta gamma (q) plots ////////////////////////
     TProfile2D *Parity_Q_obs1 = (TProfile2D *)file->Get("pParity_e_Q2parent_obs1");
     TProfile2D *Parity_Q_obs2 = (TProfile2D *)file->Get("pParity_e_Q2parent_obs2");
     TProfile2D *Parity_w_Q_obs1 = (TProfile2D *)file->Get("pParity_w_Q2parent_obs1");
@@ -934,16 +870,8 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     Parity_Q_obs2->Scale(1);
     Parity_Q_obs2->Add(Parity_w_Q_obs2);
 
-    // cout << "sig loaded" << endl;
+    int index_for_data[12] = (pion_results)? {39, 40, 43, 44, 51, 52, 55, 56, 63, 64, 67, 68} : {3, 4, 7, 8, 15, 16, 19, 20, 27, 28, 31, 32};
 
-    if (!pion_results)
-    {
-        int index_for_data[12] = {3, 4, 7, 8, 15, 16, 19, 20, 27, 28, 31, 32};
-    }
-    else if (pion_results)
-    {
-        int index_for_data[12] = {39, 40, 43, 44, 51, 52, 55, 56, 63, 64, 67, 68};
-    }
     TH1 *Parity_Q_ss1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_ss1", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
     TH1 *Parity_Q_os1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_os1", index_for_data[1 + 2 * option112 + 4 * ep_option], index_for_data[1 + 2 * option112 + 4 * ep_option]);
     TH1 *Parity_Q_ss2 = (TH1 *)Parity_Q_obs2->ProjectionY("Parity_Q_ss2", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
@@ -961,8 +889,6 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     Parity_Q_obs2_rot->Scale(1);
     Parity_Q_obs2_rot->Add(Parity_w_Q_obs2_rot);
 
-    cout << "bkg loaded" << endl;
-
     TH1 *Parity_Q_ss1_rot = (TH1 *)Parity_Q_obs1_rot->ProjectionY("Parity_Q_ss1_rot", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
     TH1 *Parity_Q_os1_rot = (TH1 *)Parity_Q_obs1_rot->ProjectionY("Parity_Q_os1_rot", index_for_data[1 + 2 * option112 + 4 * ep_option], index_for_data[1 + 2 * option112 + 4 * ep_option]);
     TH1 *Parity_Q_ss2_rot = (TH1 *)Parity_Q_obs2_rot->ProjectionY("Parity_Q_ss2_rot", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
@@ -973,73 +899,13 @@ void Q2_parent_results(int cen, int ep_option, int option112)
 
     for (int i = 0; i < Nbin; i++)
     {
-        float res_q = 1;
-
-        // cout << "Parity_Q_ss2->GetBinCenter(i + 1) = " << Parity_Q_ss2->GetBinCenter(i + 1) << endl;
-        // cout << "p_res->GetXaxis()->FindBin(Parity_Q_ss2->GetBinCenter(i + 1)) = " << p_res->GetXaxis()->FindBin(Parity_Q_ss2->GetBinCenter(i + 1)) << endl;
-        // cout << "Q2_range[ep_option][cen] = " << Q2_range[ep_option][cen] << endl;
-
-        if (Parity_Q_ss2->GetBinCenter(i + 1) < Q2_range[ep_option][cen])
-        {
-            res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Parity_Q_ss2->GetBinCenter(i + 1)));
-
-            int i_tmp = i + 2;
-            int i_tmp2 = i;
-
-            while (res_q <= 0)
-            {
-                res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Parity_Q_ss2->GetBinCenter(i_tmp)));
-                i_tmp++;
-
-                if ((res_q <= 0) && (i_tmp2 > 0)){
-                    res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Parity_Q_ss2->GetBinCenter(i_tmp2)));
-                    i_tmp2--;
-                }
-
-                if (i_tmp > (i+7)) break;
-            }
-        }
-        else
-        {
-            res_q = p_res->GetBinContent(p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]));
-
-            int i_tmp = p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]) + 1;
-            int i_tmp2 = p_res->GetXaxis()->FindBin(Q2_range[ep_option][cen]) - 1;
-
-            while (res_q <= 0)
-            {
-                res_q = p_res->GetBinContent(i_tmp);
-                i_tmp++;
-
-                if ((res_q <= 0) && (i_tmp2 > 0)){
-                    res_q = p_res->GetBinContent(i_tmp2);
-                    i_tmp2--;
-                }
-
-                if (i_tmp > (i+7)) break;
-            }
-
-            // if(ep_option == 1) cout << "p_res->GetBinContent(41) = " << p_res->GetBinContent(41) << endl;
-        }
-
-        if (ep_option <= 1)
-            res_q = sqrt(res_q);
+        float res_q = finding_res_from_resq(Parity_Q_ss2, p_res, i, Q2_range[ep_option][cen]);
+        if (ep_option <= 1) res_q = sqrt(res_q);
 
         float purity = 0;
-
-        if (i < 100)
-            purity = (lam_purity_Q2[ep_option][cen][i] + antilam_purity_Q2[ep_option][cen][i]) / 2.0;
-
-        if (purity != 0)
-        {
-            last_nonzero_purity = purity;
-        }
-        else
-        {
-            purity = last_nonzero_purity;
-        }
-
-        // purity = 1;
+        if (i < 100) purity = (lam_purity_Q2[ep_option][cen][i] + antilam_purity_Q2[ep_option][cen][i]) / 2.0;
+        if (purity != 0) last_nonzero_purity = purity;
+        else purity = last_nonzero_purity;
 
         float cont = (Parity_Q_ss2->GetBinContent(i + 1) - (1.0 - purity) * Parity_Q_ss2_rot->GetBinContent(i + 1)) / purity;
         float err = error_add(Parity_Q_ss1->GetBinError(i + 1), (1.0 - purity) * Parity_Q_ss1_rot->GetBinError(i + 1)) / purity;
@@ -1050,18 +916,10 @@ void Q2_parent_results(int cen, int ep_option, int option112)
         err = error_add(Parity_Q_os1->GetBinError(i + 1), (1.0 - purity) * Parity_Q_os1_rot->GetBinError(i + 1)) / purity;
         Parity_Q_os->SetBinContent(i + 1, cont / res_q / 100.);
         Parity_Q_os->SetBinError(i + 1, err / res_q / 100.);
-
-        // if (cen == 8 && ep_option == 0 && (cont / res_q / 100.) != 0)
-        // {
-        // cout << "cont = " << cont << endl;
-        // cout << "err = " << err << endl;
-        // cout << "res_q = " << res_q << endl;
-        // cout << "cont / res_q / 100. = " << cont / res_q / 100. << endl;
-        // cout << "err / res_q / 100. = " << err / res_q / 100. << endl;
-        // }
     }
+    //////////////////////// End of Obtaining delta gamma (q) plots ////////////////////////
 
-    //////// Rebinning Data:
+    //////////////////////// Rebinning Data to get delta gamma (v2) plots binning on q ////////////////////////
     const int N_bins = Q2_range[ep_option][cen] * 10 / rebin[ep_option][cen];
 
     float v2q[N_bins], v2q_err[N_bins], d_gq[N_bins], d_gq_err[N_bins];
@@ -1069,7 +927,6 @@ void Q2_parent_results(int cen, int ep_option, int option112)
 
     for (int i = 0; i < N_bins; i++)
     {
-
         for (int j = 0; j < rebin[ep_option][cen]; j++)
         {
             if (p_v2_Q_obs_new->GetBinError(rebin[ep_option][cen] * i + 1 + j) == 0 || Parity_Q_os->GetBinError(rebin[ep_option][cen] * i + 1 + j) == 0)
@@ -1085,7 +942,9 @@ void Q2_parent_results(int cen, int ep_option, int option112)
         d_gq[i] = new_y_numerator[i] / new_y_denomenator[i];
         d_gq_err[i] = sqrt(1.0 / new_y_denomenator[i]);
     }
+    //////////////////////// End of Rebinning Data to get delta gamma (v2) plots binning on q ////////////////////////
 
+    //////////////////////// Plotting Results ////////////////////////
     int left[9] = {70, 60, 50, 40, 30, 20, 10, 5, 0};
     int right[9] = {80, 70, 60, 50, 40, 30, 20, 10, 5};
     char centrality[200];
@@ -1212,17 +1071,6 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     g112_v2_2->SetLineWidth(2);
     g112_v2_2->Draw("pe1");
 
-    // if(ep_option == 1){
-    //     cout << "N_bins = " << N_bins << endl;
-    //     for(int lmn = 0 ; lmn < N_bins; lmn++){
-    //         cout << "v2q[" << lmn << "] = " << v2q[lmn] << endl;
-    //         cout << "v2q_err[" << lmn << "] = " << v2q_err[lmn] << endl;
-    //         cout << "d_gq[" << lmn << "] = " << d_gq[lmn] << endl;
-    //         cout << "d_gq_err[" << lmn << "] = " << d_gq_err[lmn] << endl;
-    //     }
-    //     cout << "Xfitting_delGamma[ep_option][cen] = " << Xfitting_delGamma[ep_option][cen] << endl;
-    // }
-
     TF1 *fit_g112_v2_2 = new TF1("fit_g112_v2_2", "[0]+[1]*x", Xfitting_delGamma_min[option112][ep_option][cen], Xfitting_delGamma[ep_option][cen]);
     fit_g112_v2_2->SetLineStyle(4);
     fit_g112_v2_2->SetLineColor(2);
@@ -1307,6 +1155,53 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     p_res = NULL;
     delete f_res;
     f_res = NULL;
+}
+
+float finding_res_from_resq(TH1 *profile_need_corr, TProfile *res_prof, int b_num, float q2range){
+    
+    float res_q = 1;
+
+    if (profile_need_corr->GetBinCenter(b_num + 1) < q2range)
+    {
+        res_q = res_prof->GetBinContent(res_prof->GetXaxis()->FindBin(profile_need_corr->GetBinCenter(b_num + 1)));
+
+        int i_tmp = b_num + 2;
+        int i_tmp2 = b_num;
+
+        while (res_q <= 0)
+        {
+            res_q = res_prof->GetBinContent(res_prof->GetXaxis()->FindBin(profile_need_corr->GetBinCenter(i_tmp)));
+            i_tmp++;
+
+            if ((res_q <= 0) && (i_tmp2 > 0)){
+                res_q = res_prof->GetBinContent(res_prof->GetXaxis()->FindBin(profile_need_corr->GetBinCenter(i_tmp2)));
+                i_tmp2--;
+            }
+
+            if (i_tmp > (b_num+7)) break;
+        }
+    }
+    else{
+        res_q = res_prof->GetBinContent(res_prof->GetXaxis()->FindBin(q2range));
+
+        int i_tmp = res_prof->GetXaxis()->FindBin(q2range) + 1;
+        int i_tmp2 = res_prof->GetXaxis()->FindBin(q2range) - 1;
+
+        while (res_q <= 0)
+        {
+            res_q = res_prof->GetBinContent(i_tmp);
+            i_tmp++;
+
+            if ((res_q <= 0) && (i_tmp2 > 0)){
+                res_q = res_prof->GetBinContent(i_tmp2);
+                i_tmp2--;
+            }
+
+            if (i_tmp > (b_num+7)) break;
+        }
+    }
+
+    return res_q;
 }
 
 void old_ptsplit_method(int cen)

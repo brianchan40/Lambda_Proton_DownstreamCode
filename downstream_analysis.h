@@ -62,6 +62,8 @@ void obtain_v2_average(int cen);
 void profile_divide_by_reso_fit_by_const(const char *profile_name, int cen); // used for getting average v2(eta)
 //
 void Q2_parent_results(int cen, int ep_option, int option112);
+float float finding_res_from_resq(TH1 *profile_need_corr, TProfile *res_prof, int b_num, float q2range);
+
 //
 // Old method that is not used:
 void old_ptsplit_method(int cen);
