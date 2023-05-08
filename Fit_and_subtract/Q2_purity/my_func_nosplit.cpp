@@ -30,10 +30,10 @@ void my_func_nosplit(int cen, const char* option_lam = "", double bmin_value = 1
     max_cen = cen;
 
     if(option_lam == "lam"){
-        option_lam = "";
+        option_lam = "_pion";
     }
     else if(option_lam == "antilam"){
-        option_lam = "_anti";
+        option_lam = "_pion_anti";
     }
 
     for (int i = min_cen; i <= max_cen; i++)
@@ -50,7 +50,7 @@ void my_func_nosplit(int cen, const char* option_lam = "", double bmin_value = 1
 
 void compute_purity_stats(int cen, double bmin_value, double bmax_value, TString option)
 {
-    TFile lam_nor(TString::Format("../../Traditional/Results_lam_18/cen%d.gamma112_fullEP_eff_pT02_module.root", cen).Data());
+    TFile lam_nor(TString::Format("../../KFParticle/Results_lam_18/cen%d.gamma112_fullEP_eff_pT02_module.root", cen).Data());
 
     TH2F *V0Mass = (TH2F *)lam_nor.Get(TString::Format("V0Mass_%s", option.Data()));
 

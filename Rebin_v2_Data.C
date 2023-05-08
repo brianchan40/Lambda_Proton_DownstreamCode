@@ -47,7 +47,7 @@ vector<float> Rebin_v2_Data(const char* prof_name1, const char* prof_name2, int 
     for (int i = 0; i < newbins; i++)
     {
         final_v2.push_back(v2_rec[i]);
-        // cout << "i = " << i << endl;
+        // cout << "push_back: v2_rec[i] = " << v2_rec[i] << endl;
     }
     for (int i = 0; i < newbins; i++)
     {
@@ -65,6 +65,7 @@ void Mainfunction_rebin(int cen, int newbins, const char* prof_name1, const char
 
     file->cd();
     TProfile *v2_vs_pt = (TProfile *)file->Get(prof_name1);
+    // cout << "reso[ep_option] = " << reso[ep_option] << endl;
     v2_vs_pt->Scale(1.0/reso[ep_option]);
     output_File->cd();
     v2_vs_pt->Write(prof_name1);
@@ -87,7 +88,9 @@ void Mainfunction_rebin(int cen, int newbins, const char* prof_name1, const char
         gpt->GetPoint(j, x, y);
         xx[j] = x;
         // cout << "x = " << x << endl;
+        // cout << "y = " << y << endl;
         y_err = gpt->GetErrorY(j);
+        // cout << "y_err = " << y_err << endl;
         // v2_rec[j] += y / y_err / y_err * reso[j];
         if (y_err == 0)
         {
@@ -96,6 +99,7 @@ void Mainfunction_rebin(int cen, int newbins, const char* prof_name1, const char
             continue;
         }
         v2_rec[j] += y / y_err / y_err;
+        // cout << "v2_rec[j] = " << v2_rec[j] << endl;
         // v2_rec_err[j] += 1 / y_err / y_err * reso[j] * reso[j];
         v2_rec_err[j] += 1 / y_err / y_err;
     }
@@ -116,8 +120,12 @@ void Mainfunction_rebin(int cen, int newbins, const char* prof_name1, const char
             v2_rec_err[j] = 0;
             continue;
         }
+        // cout << "2 v2_rec[j] = " << v2_rec[j] << endl;
         v2_rec[j] /= v2_rec_err[j];
+        // cout << "3 v2_rec[j] = " << v2_rec[j] << endl;
+        // cout << "v2_rec_err[j] = " << v2_rec_err[j] << endl;
         v2_rec_err[j] = 1 / sqrt(v2_rec_err[j]);
+        // cout << "2 v2_rec_err[j] = " << v2_rec_err[j] << endl;
     }
 }
 

@@ -15,7 +15,7 @@ double npart_err[9];
 float cen9_eff[9] = {75, 65, 55, 45, 35, 25, 15, 7.5, 2.5};
 float cen9_err_eff[9] = {0.};
 
-const char* method_name = "Traditional";
+const char* method_name = "KFParticle";
 
 void read_npart();
 
@@ -41,29 +41,38 @@ void plot_allcen(){
     read_npart();
 
     // plot_TH1D("proton_overlap_ratio");
-    // plot_TH1D("num_lam_tree");
+    plot_TH1D("num_lam_tree"); // num of lam in analysis
+    plot_TH1D("num_antilam_tree"); // num of antilam in analysis
+    plot_TH1D("num_lam_rot_tree"); // num of bkg lam in analysis
+    plot_TH1D("num_antilam_rot_tree"); // num of bkg antilam in analysis
+    plot_TH1D("num_proton_tree");
+    plot_TH1D("num_antiproton_tree");
     // plot_TH1D("num_lam_final");
-    // plot_TH1D("num_antilam_tree");
-    // plot_TH1D("num_lam_rot_tree");
-    // plot_TH1D("num_antilam_rot_tree");
-    // plot_TH1D("num_proton_tree");
     // plot_TH1D("num_proton_final");
     // plot_TH1D("num_proton_used");
-    // plot_TH1D("nHitsFitQA");
-    // plot_TH1D("nSigma_dauQA");
-    // plot_TH1D("dca_protonQA");
-    // plot_TH1D("dca_pionQA");
-    // plot_TH1D("dca_LambdaQA");
-    // plot_TH1D("nSigma_prim_protonQA");
-    // plot_TH1D("Hist_Pt");
-    // plot_TH1D("Hist_Pt_rot");
-    // plot_TH1D("hDpt");
-    // plot_TH1D("hDpt_rot");
-    // plot_TH1D("Hist_Pt2");
+
+    /************** Systematic Error Cuts **************/
+    plot_TH1D("nHitsFitQA");
+    plot_TH1D("nSigma_dauQA");
+    plot_TH1D("dca_protonQA");
+    plot_TH1D("dca_pionQA");
+    plot_TH1D("dca_LambdaQA");
+    plot_TH1D("nSigma_prim_protonQA");
+    /**************************************************/
+
+    plot_TH1D("Hist_Pt"); // Pt of Lambdas + AntiLambdas
+    plot_TH1D("Hist_Pt2"); // Pt of Protons + Antiprotons (multiplied by number of lam+antilam)
+    plot_TH1D("Hist_Pt_rot"); // Pt of Bkg Lambdas + AntiLambdas
     // plot_TH1D("Hist_Pt2_rot");
+    plot_TH1D("hDpt"); // Abs difference between Pt of (lam/antilam) and (p/antip)
+    plot_TH1D("hDpt_rot"); // Abs difference between Pt of (bkg lam/antilam) and (p/antip)
+
     plot_TH1D("Hist_Q2_TPC");
     plot_TH1D("Hist_Q2_EPD");
     plot_TH1D("Hist_Q2_EPD1");
+    plot_TH1D("Hist_Q2_TPC_pion");
+    plot_TH1D("Hist_Q2_EPD_pion");
+    plot_TH1D("Hist_Q2_EPD1_pion");
     // plot_TH1D("Hist_Q2_parent");
     // plot_TH1D("Hist_Q2_parent_remove1");
     // plot_TH1D("Hist_Q2_parent_QQcut");
@@ -71,6 +80,8 @@ void plot_allcen(){
     // plot_TH1D_plam("SelectRefMultM0");
     // plot_TH1D("Hist_parent_phi_low_pT");
     // plot_TH1D("Hist_parent_phi_high_pT");
+
+    plot_TProfile("v2_2_pion");
 
     // plot_TH1D("Hist_Q2_parent_tp");
     // plot_TH1D("Hist_Q2_parent_p");
@@ -112,6 +123,23 @@ void plot_allcen(){
     // plot_TH1D("Hist_Q2_parent_pair_os");
     // plot_TH1D("nHits_ratio_under_peak");
 
+    plot_TH2D("Ref_TOF");
+    plot_TH2D("V0Mass_0");
+    plot_TH2D("V0Mass_1");
+    plot_TH2D("V0Mass_2");
+    plot_TH2D("V0Mass_0_anti");
+    plot_TH2D("V0Mass_1_anti");
+    plot_TH2D("V0Mass_2_anti");
+    plot_TH2D("V0Mass_0_pion");
+    plot_TH2D("V0Mass_1_pion");
+    plot_TH2D("V0Mass_2_pion");
+    plot_TH2D("V0Mass_0_pion_anti");
+    plot_TH2D("V0Mass_1_pion_anti");
+    plot_TH2D("V0Mass_2_pion_anti");
+    plot_TH2D("Hist_EPD_EP_east_flat");
+    plot_TH2D("Hist_EPD_EP_west_flat");
+    plot_TH2D("Hist_EPD_EP1_east_flat");
+    plot_TH2D("Hist_EPD_EP1_west_flat");
     // plot_TH2D("EtaPtDist");
     // plot_TH2D("EtaPtDist_anti");
     // plot_TH2D("Hist_RefMult_Q2_parent");
@@ -121,6 +149,16 @@ void plot_allcen(){
 
     // plot_TH1D_plam("proton_mom_diff");
     // plot_TH1D_plam("percentLeft");
+
+    /* plot_TH1D_plam("RefMult"); // number events after all event cuts
+    plot_TH1D_plam("RefMultA"); // number events in particular centrality
+    plot_TH2D_plam("VertexXY_kf");
+    plot_TH1D_plam("centrality");
+    plot_TH1D_plam("lam_dist");
+    plot_TH1D_plam("antilam_dist");
+    plot_TH1D_plam("VertexZ_kf");
+    plot_TH2D_plam("Ref_TOF_before");
+    plot_TH2D_plam("Ref_TOF_after");*/
 
     // combine_processed_results("Hist_v2parent_eta_obs5");
     // combine_processed_results("Hist_v2parent_eta_obs5_rot");
@@ -308,7 +346,8 @@ void plot_TH1D_plam(const char* name){
 
     for(int i = min_cen; i <= max_cen; i++){
         cout << "i = " << i << endl;
-        TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_plam.root", method_name, i).Data());
+        // TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_plam.root", method_name, i).Data());
+        TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_output.root", method_name, i).Data());
         TH1D *temp_hist = (TH1D*) file->Get(name);
         c1.cd(i+1);
         // temp_hist->GetYaxis()->SetTitle("Number of p/#bar{p} Pairs");
@@ -321,6 +360,29 @@ void plot_TH1D_plam(const char* name){
     c1.Write(name);
 }
 
+// void plot_TH2D_plam(const char* name){
+
+//     cout << name << endl;
+
+//     TCanvas c1("c1", name, 1500, 800);
+//     c1.Divide(3, 3);
+
+//     for(int i = min_cen; i <= max_cen; i++){
+//         cout << "i = " << i << endl;
+//         // TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_plam.root", method_name, i).Data());
+//         TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_output.root", method_name, i).Data());
+//         TH2D *temp_hist = (TH2D*) file->Get(name);
+//         c1.cd(i+1);
+//         // temp_hist->GetYaxis()->SetTitle("Number of p/#bar{p} Pairs");
+//         // temp_hist->GetYaxis()->SetTitleOffset(1.3);
+//         // temp_hist->GetXaxis()->SetTitle("p_{T} Difference (GeV/c)");
+//         temp_hist->Draw();
+//     }
+
+//     output_File->cd();
+//     c1.Write(name);
+// }
+
 void plot_TH2D(const char* name){
 
     cout << name << endl;
@@ -330,6 +392,9 @@ void plot_TH2D(const char* name){
 
     TCanvas c2("c2", TString::Format("%s_px", name).Data(), 1500, 800);
     c2.Divide(3, 3);
+
+    TCanvas c3("c3", TString::Format("%s_py", name).Data(), 1500, 800);
+    c3.Divide(3, 3);
 
     TH2D *temp_hist;
     TH1D *temp_hist_projection;
@@ -341,14 +406,21 @@ void plot_TH2D(const char* name){
         gPad->SetLogz();
         (TH2D *)(temp_hist->Clone())->Draw("COLZ");
 
-        temp_hist_projection = (TH1D*)((TH2D *)temp_hist->Clone())->ProjectionY()->Clone();
+        temp_hist_projection = (TH1D*)((TH2D *)temp_hist->Clone())->ProjectionX()->Clone();
         c2.cd(i+1);
+        temp_hist_projection->GetYaxis()->SetRangeUser(0, temp_hist_projection->GetBinContent(temp_hist_projection->GetMaximumBin()) * 1.1);
         (TH1D*)(temp_hist_projection->Clone())->Draw();
+
+        temp_hist_projection_y = (TH1D*)((TH2D *)temp_hist->Clone())->ProjectionY()->Clone();
+        c3.cd(i+1);
+        (TH1D*)(temp_hist_projection_y->Clone())->Draw();
 
         delete temp_hist;
         temp_hist = NULL;
         delete temp_hist_projection;
         temp_hist_projection = NULL;
+        delete temp_hist_projection_y;
+        temp_hist_projection_y = NULL;
 
         // file.Close();
     }
@@ -356,6 +428,7 @@ void plot_TH2D(const char* name){
     output_File->cd();
     c1.Write(name);
     c2.Write(TString::Format("%s_px", name));
+    c3.Write(TString::Format("%s_py", name));
 }
 
 void plot_TH2D_plam(const char* name){
@@ -372,7 +445,8 @@ void plot_TH2D_plam(const char* name){
     TH1D *temp_hist_projection;
 
     for(int i = min_cen; i <= max_cen; i++){
-        TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_plam.root", method_name, i).Data());
+        // TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_plam.root", method_name, i).Data());
+        TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_output.root", method_name, i).Data());
         temp_hist = (TH2D*) file->Get(name);
         c1.cd(i+1);
         gPad->SetLogz();
