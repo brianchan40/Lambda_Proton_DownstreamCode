@@ -24,10 +24,8 @@ void downstream_analysis()
         downstream_analysis_bycen(i);
     }
 
-    cout << "after loop delta[0] = " << delta[0] << endl;
-
     plotting_TGraph_Helper("TPC vs. EPD vs. EPD1 Resolution", "Centrality %", "Resolution", 9, cen9_eff, cen9_err_eff, reso_TPC, reso_TPC_err, reso_EPD, reso_EPD_err, reso_EPD1, reso_EPD1_err);
-    organize_and_plot_v2_results();
+    organize_and_plot_v2_results(); // not really useful anymore because of changes in obtaining v2 for q2 correction
     organize_and_plot_gamma_results();
 
     output_File2->Close();
@@ -272,7 +270,7 @@ void organize_and_plot_v2_results()
         }
     }
 
-    plotting_TGraph_Helper("TPC vs. EPD vs. EPD1 Single Charged Particles v_{2}", "Centrality %", "Resolution", 9, cen9_eff, cen9_err_eff, v2_averaged_TPC, v2_averaged_TPC_err, v2_averaged_EPD, v2_averaged_EPD_err, v2_averaged_EPD1, v2_averaged_EPD1_err);
+    plotting_TGraph_Helper("TPC vs. EPD vs. EPD1 Single Charged Particles v_{2}", "Centrality %", "v_{2}", 9, cen9_eff, cen9_err_eff, v2_averaged_TPC, v2_averaged_TPC_err, v2_averaged_EPD, v2_averaged_EPD_err, v2_averaged_EPD1, v2_averaged_EPD1_err);
 }
 
 void organize_and_plot_gamma_results()
