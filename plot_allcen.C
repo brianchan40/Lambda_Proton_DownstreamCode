@@ -31,6 +31,7 @@ void plot_two_TGraphErrors(TGraphErrors graph1, TGraphErrors graph2, const char*
 TGraphErrors subtract_two_graphs(TGraphErrors graph1, TGraphErrors graph2, bool save, const char* name);
 void plot_TH1D_plam(const char* name);
 void plot_TH2D_plam(const char* name);
+void plot_TH1D_systematics(const char* name, float cut_value, const char* x_name);
 
 int max_cen = 8;
 int min_cen = 0;
@@ -52,16 +53,16 @@ void plot_allcen(){
     // plot_TH1D("num_proton_used");
 
     /************** Systematic Error Cuts **************/
-    plot_TH1D("nHitsFitQA");
-    plot_TH1D("nSigma_dauQA");
-    plot_TH1D("dca_protonQA");
-    plot_TH1D("dca_pionQA");
-    plot_TH1D("dca_LambdaQA");
-    plot_TH1D("nSigma_prim_protonQA");
+    plot_TH1D_systematics("nHitsFitQA", 20, "nHitsFit");
+    plot_TH1D_systematics("nSigma_dauQA", 2, "nSigma - Daughters of Reconstructed Baryons");
+    plot_TH1D_systematics("dca_protonQA", 1, "DCA of Daughter Protons");
+    plot_TH1D_systematics("dca_pionQA", 2, "DCA of Daughter Pions");
+    // plot_TH1D_systematics("dca_LambdaQA");
+    plot_TH1D_systematics("Hist_Pt2", 0.5, "Transverse Momentum of Primary Protons"); // Pt of Protons + Antiprotons (multiplied by number of lam+antilam)
+    plot_TH1D_systematics("nSigma_prim_protonQA", 1, "nSigma - Primary Protons");
     /**************************************************/
 
     plot_TH1D("Hist_Pt"); // Pt of Lambdas + AntiLambdas
-    plot_TH1D("Hist_Pt2"); // Pt of Protons + Antiprotons (multiplied by number of lam+antilam)
     plot_TH1D("Hist_Pt_rot"); // Pt of Bkg Lambdas + AntiLambdas
     // plot_TH1D("Hist_Pt2_rot");
     plot_TH1D("hDpt"); // Abs difference between Pt of (lam/antilam) and (p/antip)
@@ -73,6 +74,10 @@ void plot_allcen(){
     plot_TH1D("Hist_Q2_TPC_pion");
     plot_TH1D("Hist_Q2_EPD_pion");
     plot_TH1D("Hist_Q2_EPD1_pion");
+    plot_TH1D("Hist_lam_phi_before");
+    plot_TH1D("Hist_lam_phi_after");
+    plot_TH1D("Hist_p_phi_before");
+    plot_TH1D("Hist_p_phi_after");
     // plot_TH1D("Hist_Q2_parent");
     // plot_TH1D("Hist_Q2_parent_remove1");
     // plot_TH1D("Hist_Q2_parent_QQcut");
@@ -155,9 +160,9 @@ void plot_allcen(){
     plot_TH2D_plam("VertexXY_kf");
     plot_TH1D_plam("centrality");
     plot_TH1D_plam("lam_dist");
-    plot_TH1D_plam("antilam_dist");
+    plot_TH1D_plam("antilam_dist");*/
     plot_TH1D_plam("VertexZ_kf");
-    plot_TH2D_plam("Ref_TOF_before");
+    /*plot_TH2D_plam("Ref_TOF_before");
     plot_TH2D_plam("Ref_TOF_after");*/
 
     // combine_processed_results("Hist_v2parent_eta_obs5");
@@ -315,6 +320,32 @@ void plot_TH1D(const char* name){
     c1.Write(name);
 }
 
+void plot_TH1D_systematics(const char* name, float cut_value, const char* x_name){
+
+    cout << name << endl;
+
+    TCanvas c1("c1", name, 1500, 800);
+    c1.Divide(3, 3);
+
+    for(int i = min_cen; i <= max_cen; i++){
+        cout << "i = " << i << endl;
+        TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d.gamma112_fullEP_eff_pT02_module.root", method_name, i).Data());
+        TH1D *temp_hist = (TH1D*) file->Get(name);
+        c1.cd(i+1);
+        temp_hist->SetTitle(TString::Format("Centrality Bin %d", i+1));
+        temp_hist->GetYaxis()->SetTitle("Number of Events");
+        temp_hist->GetYaxis()->SetTitleOffset(1.3);
+        temp_hist->GetXaxis()->SetTitle(x_name);
+        temp_hist->Draw();
+        TLine *l1 = new TLine(cut_value, 0, cut_value, temp_hist->GetMaximum());
+        l1->SetLineColor(kRed);
+        l1->Draw();
+    }
+
+    output_File->cd();
+    c1.Write(name);
+}
+
 void plot_TProfile(const char* name){
 
     cout << name << endl;
@@ -347,12 +378,17 @@ void plot_TH1D_plam(const char* name){
     for(int i = min_cen; i <= max_cen; i++){
         cout << "i = " << i << endl;
         // TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_plam.root", method_name, i).Data());
-        TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_output.root", method_name, i).Data());
+        // TFile *file = new TFile(TString::Format("./%s/Results_lam_18/cen%d_output.root", method_name, i).Data());
+        TFile *file = new TFile(TString::Format("./%s/plam_27.root", method_name, i).Data());
         TH1D *temp_hist = (TH1D*) file->Get(name);
         c1.cd(i+1);
         // temp_hist->GetYaxis()->SetTitle("Number of p/#bar{p} Pairs");
         // temp_hist->GetYaxis()->SetTitleOffset(1.3);
         // temp_hist->GetXaxis()->SetTitle("p_{T} Difference (GeV/c)");
+        temp_hist->SetTitle(TString::Format("Centrality Bin %d", i+1));
+        temp_hist->GetYaxis()->SetTitle("Number of Events");
+        temp_hist->GetYaxis()->SetTitleOffset(1.3);
+        temp_hist->GetXaxis()->SetTitle("z-component of Primary Vertex (cm)");
         temp_hist->Draw();
     }
 

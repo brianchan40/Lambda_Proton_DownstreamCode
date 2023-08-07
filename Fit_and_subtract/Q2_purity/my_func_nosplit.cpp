@@ -29,11 +29,17 @@ void my_func_nosplit(int cen, const char* option_lam = "", double bmin_value = 1
     min_cen = cen;
     max_cen = cen;
 
+    // if(option_lam == "lam"){
+    //     option_lam = "_pion";
+    // }
+    // else if(option_lam == "antilam"){
+    //     option_lam = "_pion_anti";
+    // }
     if(option_lam == "lam"){
-        option_lam = "_pion";
+        option_lam = "_single_pion";
     }
     else if(option_lam == "antilam"){
-        option_lam = "_pion_anti";
+        option_lam = "_single_pion_anti";
     }
 
     for (int i = min_cen; i <= max_cen; i++)
@@ -112,8 +118,18 @@ void compute_purity_stats(int cen, double bmin_value, double bmax_value, TString
         straight_line->Draw("LSAME");
 
         TLegend *lam_leg = new TLegend(0.6, 0.6, 0.8, 0.8);
-        Double_t line_height = tmp_V0Mass->GetBinContent(tmp_V0Mass->GetMaximumBin()) + 100;
-        tmp_V0Mass->SetTitle("Lambda Mass Distribution");
+        Double_t line_height = tmp_V0Mass->GetBinContent(tmp_V0Mass->GetMaximumBin());
+        // tmp_V0Mass->SetTitle("Lambda Mass Distribution");
+        
+        TString l_opt = "";
+        if(option == "0_pion" || option == "1_pion" || option == "2_pion"){
+            tmp_V0Mass->SetTitle(TString::Format("#Lambda, 19GeV Au+Au, Centrality Bin %d, %0.1f < q^{2}_{pion-pair} < %0.1f", cen+1, (b-1) * 0.1, (b) * 0.1).Data());
+        }
+        else if(option == "0_pion_anti" || option == "1_pion_anti" || option == "2_pion_anti"){
+            tmp_V0Mass->SetTitle(TString::Format("#bar{#Lambda}, 27GeV Au+Au, Centrality Bin %d, %0.1f < q^{2} < %0.1f", cen+1, (b-1) * 0.1, (b) * 0.1).Data());
+        }
+        
+        
         tmp_V0Mass->GetXaxis()->SetTitle("p #pi^{-} Invariant Mass (GeV/c^{2})");
         TLine *maxline = new TLine(bmax_value, 0, bmax_value, line_height);
         TLine *minline = new TLine(bmin_value, 0, bmin_value, line_height);
@@ -139,17 +155,17 @@ void compute_purity_stats(int cen, double bmin_value, double bmax_value, TString
         leg1->Draw();
         lam_leg->SetBorderSize(0);
         lam_leg->SetFillStyle(0);
-        lam_leg->Draw();
+        // lam_leg->Draw();
         TLegend *lam_leg2 = new TLegend(0.6, 0.6, 0.7, 0.7);
         lam_leg2->SetHeader("27 GeV Au+Au");
         lam_leg2->SetBorderSize(0);
         lam_leg2->SetFillStyle(0);
-        lam_leg2->Draw();
+        // lam_leg2->Draw();
         TLegend *lam_leg3 = new TLegend(0.6, 0.6, 0.7, 0.7);
         lam_leg3->SetHeader("20-30%");
         lam_leg3->SetBorderSize(0);
         lam_leg3->SetFillStyle(0);
-        lam_leg3->Draw();
+        // lam_leg3->Draw();
         cout << "Lines done" << endl;
         canvas_temp->Write();
 

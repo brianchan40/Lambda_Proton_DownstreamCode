@@ -58,6 +58,20 @@
         "locale": "cpp",
         "mutex": "cpp",
         "ratio": "cpp",
-        "error_calc.C": "cpp"
+        "error_calc.C": "cpp",
+        "plot_summary_plots.C": "cpp",
+        "__hash_table": "cpp",
+        "__nullptr": "cpp",
+        "__string": "cpp",
+        "__threading_support": "cpp",
+        "array": "cpp",
+        "string_view": "cpp",
+        "iomanip": "cpp",
+        "unordered_map": "cpp",
+        "hashtable": "cpp",
+        "TOF_eff_calculator.C": "cpp",
+        "__tree": "c",
+        "map": "c",
+        "test.C": "cpp"
     }
 }

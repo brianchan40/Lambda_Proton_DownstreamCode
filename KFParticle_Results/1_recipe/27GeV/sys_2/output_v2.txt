@@ -1,0 +1,9 @@
+const float v2_averaged_TPC[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; 
+const float v2_parent_averaged_TPC[9] = {0.064123, 0.0621338, 0.0453429, 0.0450649, 0.0418676, 0.0366546, 0.0264286, 0.0179082, 0.00970146}; 
+const float v2_averaged_pairpion_TPC[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; 
+const float v2_averaged_EPD[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; 
+const float v2_parent_averaged_EPD[9] = {0.00458577, 0.033019, 0.0420223, 0.0510579, 0.0421478, 0.0374114, 0.0270797, 0.0171049, 0.0115076}; 
+const float v2_averaged_pairpion_EPD[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; 
+const float v2_averaged_EPD1[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; 
+const float v2_parent_averaged_EPD1[9] = {-0.0561324, 0.0459989, 0.0356462, 0.0421684, 0.0387515, 0.0360627, 0.0275603, 0.0127409, 0.0115284}; 
+const float v2_averaged_pairpion_EPD1[9] = {0, 0, 0, 0, 0, 0, 0, 0, 0}; 

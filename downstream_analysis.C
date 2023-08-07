@@ -17,6 +17,7 @@ void downstream_analysis()
     // 1. Read in purity statistics for Lambdas and Protons 
     // 2. Create Files to store results across centralities
     initialize_macro(); 
+    
 
     for (int i = min_cen; i <= max_cen; i++)
     {
@@ -28,24 +29,38 @@ void downstream_analysis()
     organize_and_plot_v2_results(); // not really useful anymore because of changes in obtaining v2 for q2 correction
     organize_and_plot_gamma_results();
 
+    debug_file << "Resolution:" << endl;
+    for (int l = 0; l < 9; l++){
+        debug_file << reso_EPD[l] << ", ";
+    }
+    debug_file << endl;
+    for (int l = 0; l < 9; l++){
+        debug_file << reso_EPD1[l] << ", ";
+    }
+
     output_File2->Close();
     result_file.close();
     gamma_results.close();
+    debug_file.close();
 }
 
 void initialize_macro()
 {
     read_sig();       // getting purity statistics by pT
+    cout << "read_sig" << endl;
     read_npart();     // getting npart statistics
+    cout << "read_npart" << endl;
     read_purity_Q2(); // getting purity statistics by Q2
+    cout << "read_purity_Q2" << endl;
 
     name_options3.push_back("TPC");
     name_options3.push_back("EPD");
     name_options3.push_back("EPD1");
 
-    result_file.open(TString::Format("./%s_Results/output_v2.txt", method_name).Data());
-    gamma_results.open(TString::Format("./%s_Results/gamma_results.txt", method_name).Data());
-    output_File2 = new TFile(TString::Format("./%s_Results/output_cen%d-%d.root", method_name, min_cen, max_cen).Data(), "recreate");
+    result_file.open(TString::Format("./%s_Results/output_v2_recipe%d.txt", method_name, recipe).Data());
+    gamma_results.open(TString::Format("./%s_Results/gamma_results_recipe%d.txt", method_name, recipe).Data());
+    debug_file.open(TString::Format("./%s_Results/debug_log_recipe%d.txt", method_name, recipe).Data());
+    output_File2 = new TFile(TString::Format("./%s_Results/output_cen%d-%d_recipe%d.root", method_name, min_cen, max_cen, recipe).Data(), "recreate");
 }
 
 void read_sig()
@@ -158,9 +173,15 @@ void read_purity_Q2()
 {
     for (int curr_c = 0; curr_c < 9; curr_c++)
     {
-        std::fstream myfile(TString::Format("./Fit_and_subtract/Q2_purity/%s/pion/output_cen%d_pion.txt", method_name, curr_c), std::ios_base::in);
+        TString fileName;
+        if (recipe <= 2) fileName = TString::Format("./Fit_and_subtract/Q2_purity/%s/pion/output_cen%d_pion.txt", method_name, curr_c);    
+        else fileName = TString::Format("./Fit_and_subtract/Q2_purity/%s/single_pion/output_cen%d_single_pion.txt", method_name, curr_c);
 
-        // cout << "Centrality = " << curr_c << endl;
+        std::fstream myfile(fileName.Data(), std::ios_base::in);
+        
+        // if (!myfile) cout << "Centrality = " << curr_c << endl;
+
+        // cout << "Centrality2 = " << curr_c << endl;
 
         float a = 0;
         int count = 0, count2 = 0;
@@ -168,7 +189,6 @@ void read_purity_Q2()
 
         while (getline(myfile, line_text))
         {
-
             istringstream ss(line_text);
             while (ss >> a)
             {
@@ -184,8 +204,11 @@ void read_purity_Q2()
             count2 = 0;
         }
 
-        std::fstream myfile2(TString::Format("./Fit_and_subtract/Q2_purity/%s/pion/output_cen%d_pion_anti.txt", method_name, curr_c), std::ios_base::in);
+        
+        if (recipe <= 2) fileName = TString::Format("./Fit_and_subtract/Q2_purity/%s/pion/output_cen%d_pion_anti.txt", method_name, curr_c);
+        else fileName = TString::Format("./Fit_and_subtract/Q2_purity/%s/single_pion/output_cen%d_single_pion_anti.txt", method_name, curr_c);
 
+        std::fstream myfile2(fileName.Data(), std::ios_base::in);
         // cout << "Centrality = " << curr_c << endl;
 
         a = 0;
@@ -218,7 +241,7 @@ void read_purity_Q2()
 
 void organize_and_plot_v2_results()
 {
-
+    cout << "organize_and_plot_v2_results" << endl;
     float v2_averaged_TPC[9] = {0.}, v2_averaged_EPD[9] = {0.}, v2_averaged_EPD1[9] = {0.}, v2_averaged_TPC_err[9] = {0.}, v2_averaged_EPD_err[9] = {0.}, v2_averaged_EPD1_err[9] = {0.};
 
     for (int w = 0; w < 3; w++)
@@ -264,10 +287,22 @@ void organize_and_plot_v2_results()
         for (int q = 0; q <= (max_cen - min_cen); q++)
         {
             if (q != (max_cen - min_cen))
-                result_file << pionpion_v2_vect[w].at(2 * q) << ", ";
+                result_file << pionpion_v2_vect.at(q) << ", ";
             else
-                result_file << pionpion_v2_vect[w].at(2 * q) << "}; \n";
+                result_file << pionpion_v2_vect.at(q) << "}; \n";
         }
+
+        result_file << "const float v2_averaged_singlepion_" << name_options3.at(w) << "[9] = {";
+
+        for (int q = 0; q <= (max_cen - min_cen); q++)
+        {
+            if (q != (max_cen - min_cen))
+                result_file << pion_v2_vect.at(q) << ", ";
+            else
+                result_file << pion_v2_vect.at(q) << "}; \n";
+        }
+
+        
     }
 
     plotting_TGraph_Helper("TPC vs. EPD vs. EPD1 Single Charged Particles v_{2}", "Centrality %", "v_{2}", 9, cen9_eff, cen9_err_eff, v2_averaged_TPC, v2_averaged_TPC_err, v2_averaged_EPD, v2_averaged_EPD_err, v2_averaged_EPD1, v2_averaged_EPD1_err);
@@ -328,6 +363,10 @@ void organize_and_plot_gamma_results()
         gamma132_ensemble_TPC_err[j] = gamma_ensemble_err[1][j][0] * npart[j];
         gamma132_ensemble_EPD_err[j] = gamma_ensemble_err[1][j][1] * npart[j];
         gamma132_ensemble_EPD1_err[j] = gamma_ensemble_err[1][j][2] * npart[j];
+
+        // debug_file << "centrality: " << j << endl;
+        debug_file << "npart = " << npart[j] << endl;
+        debug_file << "(npart) EPD = " << gamma112_ensemble_EPD[j] << " +/- " << gamma112_ensemble_EPD_err[j] << ", EPD1 = " << gamma112_ensemble_EPD1[j] << " +/- " << gamma112_ensemble_EPD1_err[j] << endl;
 
         gamma_results << j << ", " << gamma_ensemble[0][j][1] << ", " << gamma_ensemble_err[0][j][1] << ", " << gamma_ensemble[1][j][1] << ", " << gamma_ensemble_err[1][j][1] << ", " << gamma_ensemble[0][j][2] << ", " << gamma_ensemble_err[0][j][2] << ", " << gamma_ensemble[1][j][2] << ", " << gamma_ensemble_err[1][j][2] << ", ";
         gamma_results << gamma[0][j][1] << ", " << gamma_err[0][j][1] << ", " << gamma[1][j][1] << ", " << gamma_err[1][j][1] << ", " << gamma[0][j][2] << ", " << gamma_err[0][j][2] << ", " << gamma[1][j][2] << ", " << gamma_err[1][j][2] << ", ";
@@ -400,6 +439,9 @@ void organize_and_plot_gamma_results()
     plotting_TGraph_Helper("ESE: #Delta#gamma_{112} * N_{part} EPD vs. EPD1", "Centrality %", "#Delta#gamma_{112} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma112_EPD, gamma112_EPD_err, gamma112_EPD1, gamma112_EPD1_err);
     plotting_TGraph_Helper("ESE: #Delta#gamma_{132} * N_{part} EPD vs. EPD1", "Centrality %", "#Delta#gamma_{132} * N_{part}", 9, cen9_eff, cen9_err_eff, gamma132_EPD, gamma132_EPD_err, gamma132_EPD1, gamma132_EPD1_err);
 
+    plotting_TGraph_Helper("Ensemble EPD #Delta#gamma_{112} * N_{part} vs. #Delta#gamma_{132} * N_{part}", "Centrality %", "#Delta#gamma * N_{part}", 9, cen9_eff, cen9_err_eff, gamma112_ensemble_EPD, gamma112_ensemble_EPD_err, gamma132_ensemble_EPD, gamma132_ensemble_EPD_err);
+    plotting_TGraph_Helper("Ensemble EPD1 #Delta#gamma_{112} * N_{part} vs. #Delta#gamma_{132} * N_{part}", "Centrality %", "#Delta#gamma * N_{part}", 9, cen9_eff, cen9_err_eff, gamma112_ensemble_EPD1, gamma112_ensemble_EPD1_err, gamma132_ensemble_EPD1, gamma132_ensemble_EPD1_err);
+
     plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD #kappa_{112}", "Centrality %", "#kappa_{112}", 9, cen9_eff, cen9_err_eff, kappa112_EPD_ESE, kappa112_EPD_ESE_err, kappa112_EPD, kappa112_EPD_err);
     plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD1 #kappa_{112}", "Centrality %", "#kappa_{112}", 9, cen9_eff, cen9_err_eff, kappa112_EPD1_ESE, kappa112_EPD1_ESE_err, kappa112_EPD1, kappa112_EPD1_err);
     plotting_TGraph_Helper("Compare ESE vs. Ensemble EPD #kappa_{132}", "Centrality %", "#kappa_{132}", 9, cen9_eff, cen9_err_eff, kappa132_EPD_ESE, kappa132_EPD_ESE_err, kappa132_EPD, kappa132_EPD_err);
@@ -429,6 +471,7 @@ void plotting_TGraph_Helper(const char *title, const char *x_title, const char *
         TGraphErrors *tmp_graph3 = new TGraphErrors(npts, x, y3, x_err, y3_err);
 
     output_File2->cd();
+    
     TCanvas c1(title, title, 1500, 800);
     tmp_graph1->SetMarkerStyle(kFullCircle);
     tmp_graph1->SetMarkerColor(kBlack);
@@ -437,6 +480,7 @@ void plotting_TGraph_Helper(const char *title, const char *x_title, const char *
     tmp_graph1->GetXaxis()->SetTitle(x_title);
     tmp_graph1->GetYaxis()->SetTitle(y_title);
     tmp_graph1->Draw("AP");
+
     if (y2 != NULL)
     {
         // cout << "plotting second" << endl;
@@ -481,16 +525,17 @@ void downstream_analysis_bycen(int cen)
 void initialize_each_cen(int cen)
 {
     file = new TFile(TString::Format("./%s/Results_lam_18/cen%d.gamma112_fullEP_eff_pT02_module.root", method_name, cen).Data());
-    output_File = new TFile(TString::Format("./%s_Results/output_cen%d.root", method_name, cen).Data(), "recreate");
+    output_File = new TFile(TString::Format("./%s_Results/output_cen%d_recipe%d.root", method_name, cen, recipe).Data(), "recreate");
 
-    extract_reso();
+    cout << "Centrality = " << cen << endl;
+    extract_reso(cen);
 
     reso_TPC[cen] = reso[0];
     reso_EPD[cen] = reso[1];
     reso_EPD1[cen] = reso[2];
 }
 
-void extract_reso()
+void extract_reso(int cen)
 {
     file->cd();
     TProfile *Hist_cos = (TProfile *)file->Get("Hist_cos");
@@ -498,11 +543,16 @@ void extract_reso()
 
     reso1[0] = calc_reso(Hist_cos->GetBinContent(2)); // for full event plane
     reso[0] = sqrt(Hist_cos->GetBinContent(1));       // for eta sub TPC
+
+    cout << "Hist_cos_EPD->GetBinContent(1) = " << Hist_cos_EPD->GetBinContent(1) << endl;
+    
+    reso[2] = Hist_cos_EPD->GetBinContent(4); // for eta sub EPD1
     if (Hist_cos_EPD->GetBinContent(1) >= 0)
         reso[1] = sqrt(Hist_cos_EPD->GetBinContent(1)); // for eta sub EPD
-    else
-        reso[1] = 1;
-    reso[2] = Hist_cos_EPD->GetBinContent(4); // for eta sub EPD1
+    else{
+        if (cen == 7) reso[1] = sqrt(-Hist_cos_EPD->GetBinContent(1));
+        else reso[1] = 1;
+    }
 
     for (int i = 0; i < 3; i++)
         cout << "reso[" << i << "] = " << reso[i] << endl;
@@ -651,6 +701,13 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bo
 
     TGraphErrors *temp_graph_combined = new TGraphErrors(n_bins, x_combined, y_combined, x_err_combined, y_err_combined);
 
+    if ((profile_name == "Parity_int_ss_obs") && (!QQ_cut)){
+        debug_file << "centrality = " << cen << ", ep option = " << 1 << endl;
+        debug_file << "os: " << y[4 + (4 * 1)] << " +/- " << y_err[4 + (4 * 1)] << ", ss: " << y[3 + (4 * 1)] << " +/- " << y_err[3 + (4 * 1)] << endl;
+        debug_file << "anti os: " << y_anti[4 + (4 * 1)] << " +/- " << y_anti_err[4 + (4 * 1)] << ", anti ss: " << y_anti[3 + (4 * 1)] << " +/- " << y_anti_err[3 + (4 * 1)] << endl;
+        debug_file << "combined os: " << y_combined[4 + (4 * 1)] << " +/- " << y_err_combined[4 + (4 * 1)] << ", combined ss: " << y_combined[3 + (4 * 1)] << " +/- " << y_err_combined[3 + (4 * 1)] << endl;
+    } 
+
     //////////////////////////// End of Combining Lambda and AntiLambda Results ////////////////////////////
 
     //////////////////////////// Recording for Cross-Centrality Analysis ////////////////////////////
@@ -686,13 +743,18 @@ void profile_divide_by_reso(const char *profile_name, int cen, bool eff_corr, bo
             gamma_ensemble_err[0][cen][tp1] = error_add(y_err_combined[4 + (4 * tp1)], y_err_combined[3 + (4 * tp1)]);
             if (tp1 == 0) gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso1[tp1] / 100.0;
             else gamma_ensemble_err[0][cen][tp1] = gamma_ensemble_err[0][cen][tp1] / reso[tp1] / 100.0;
+
+            if(tp1 == 1) {
+                debug_file << "reso = " << reso[tp1] << endl;
+                debug_file << gamma_ensemble[0][cen][tp1] << " +/- " << gamma_ensemble_err[0][cen][tp1] << endl;
+            } 
         }
     }
 
     output_File->cd();
-    temp_graph->Write(TString::Format("%s%d", profile_name, num));
-    temp_graph_anti->Write(TString::Format("%s%d_anti", profile_name, num));
-    temp_graph_combined->Write(TString::Format("%s%d_combined", profile_name, num));
+    temp_graph->Write(TString::Format("%s%d%s", profile_name, num, qq_cut));
+    temp_graph_anti->Write(TString::Format("%s%d%s_anti", profile_name, num, qq_cut));
+    temp_graph_combined->Write(TString::Format("%s%d%s_combined", profile_name, num, qq_cut));
 
     if ((profile_name == "Delta_int_ss_obs"))
     {
@@ -728,11 +790,11 @@ void obtain_v2_average(int cen)
         alltrks_v2_vect[jk].push_back(temp_vec.at(2) / 100.0);
         temp_vec.clear();
 
-        sprintf(fname, "Hist_v2pion_pt_%s_obs5", name_options3.at(jk).Data());
-        temp_vec = Rebin_v2_Data(fname, fname, cen, 3);
-        pionpion_v2_vect[jk].push_back(sqrt(fabs(temp_vec.at(1))));
-        pionpion_v2_vect[jk].push_back(temp_vec.at(2));
-        temp_vec.clear();
+        // sprintf(fname, "Hist_v2pion_pt_%s_obs5", name_options3.at(jk).Data());
+        // temp_vec = Rebin_v2_Data(fname, fname, cen, 3);
+        // pionpion_v2_vect[jk].push_back(sqrt(fabs(temp_vec.at(1))));
+        // pionpion_v2_vect[jk].push_back(temp_vec.at(2));
+        // temp_vec.clear();
 
         v2_lam[cen][jk] = v2_single_lamda->GetBinContent(jk);
         v2_lam_err[cen][jk] = v2_single_lamda->GetBinError(jk);
@@ -750,6 +812,12 @@ void obtain_v2_average(int cen)
     proton_v2_vect.push_back(temp_vec.at(1) / 100.0);
     proton_v2_vect.push_back(temp_vec.at(2) / 100.0);
     temp_vec.clear();
+
+    TProfile *v2_2_single_pion = (TProfile *)file->Get("v2_2_single_pion");
+    pion_v2_vect.push_back(v2_2_single_pion->GetBinContent(1)/(reso1[0] * 100.0));
+
+    TProfile *v2_2_pion = (TProfile *)file->Get("v2_2_pion");
+    pionpion_v2_vect.push_back(v2_2_pion->GetBinContent(1)/100.0);
 
     // Alternate Method to get Average v2: by fitting v2(eta) dist
     // profile_divide_by_reso_fit_by_const("Hist_v2parent_eta_obs5", cen);
@@ -775,6 +843,7 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     bool pion_results = true;
     float Q2_range[3][9] = (pion_results)? {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {5, 5, 5, 5, 10, 10, 10, 10, 10}, {5, 5, 5, 5, 10, 10, 10, 10, 10}} : {{3.5, 5, 5, 5, 5, 5, 3.5, 1.5, 0.6}, {2, 3.5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
     int rebin[3][9] = (pion_results)? {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}} : {{5, 5, 5, 5, 5, 5, 5, 2, 1}, {5, 5, 5, 5, 5, 5, 5, 5, 5}, {5, 5, 5, 5, 5, 5, 5, 5, 5}};
+    TString ep_option_name2[3] = {"_TPC", "_EPD", "_EPD1"};
     TString ep_option_name[3] = {"", "_EPD", "_EPD1"};
 
     // resolution
@@ -802,9 +871,13 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     //////////////////////// Resolution ////////////////////////
     // p_cos_Q2, p_cos_Q2_EPD, p_cos_Q2_EPD1
     if (!pion_results)
-        TProfile *p_res = (TProfile *)file->Get(TString::Format("p_cos_Q2%s", ep_option_name[ep_option].Data()).Data());
-    if (pion_results)
-        TProfile *p_res = (TProfile *)file->Get(TString::Format("p_cos_Q2%s_pion", ep_option_name[ep_option].Data()).Data());
+        TProfile *p_res = (TProfile *)file->Get(TString::Format("p_cos_Q2%s", ep_option_name2[ep_option].Data()).Data());
+    if (pion_results){
+        if(recipe <= 2) TProfile *p_res = (TProfile *)file->Get(TString::Format("p_cos_Q2%s_pion", ep_option_name2[ep_option].Data()).Data());
+        else TProfile *p_res = (TProfile *)file->Get(TString::Format("p_cos_Q2%s_single_pion", ep_option_name2[ep_option].Data()).Data());
+    }
+        
+
     TF1 *f_res = new TF1("f_res", "[0]+[1]*x+[2]*x*x+[3]*x*x*x+[4]*x*x*x*x", 0, Q2_range[ep_option][cen]);
     p_res->Fit("f_res", "0Q", "", 0, Q2_range[ep_option][cen]);
 
@@ -830,10 +903,31 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     // TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_v2w_Q2%s_obs1", ep_option_name[ep_option].Data()));
     // TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_v2w_Q2%s_obs2", ep_option_name[ep_option].Data()));
 
-    TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pionv2e_Q2%s_obs1", ep_option_name[ep_option].Data()));
-    TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2e_Q2%s_obs2", ep_option_name[ep_option].Data()));
-    TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pionv2w_Q2%s_obs1", ep_option_name[ep_option].Data()));
-    TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2w_Q2%s_obs2", ep_option_name[ep_option].Data()));
+    if(recipe == 1){
+        TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pionv2e_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2e_Q2%s_obs2", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pionv2w_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2w_Q2%s_obs2", ep_option_name[ep_option].Data()));
+    }
+    else if(recipe == 3){
+        TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pionv2e_single_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2e_single_Q2%s_obs2", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pionv2w_single_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pionv2w_single_Q2%s_obs2", ep_option_name[ep_option].Data()));
+    }
+    else if(recipe == 2){
+        TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pion_single_v2e_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pion_single_v2e_Q2%s_obs2", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pion_single_v2w_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pion_single_v2w_Q2%s_obs2", ep_option_name[ep_option].Data()));
+    }
+    else if(recipe == 4){
+        TProfile *p_v2_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pion_single_v2e_single_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pion_single_v2e_single_Q2%s_obs2", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs1 = (TProfile *)file->Get(TString::Format("p_pion_single_v2w_single_Q2%s_obs1", ep_option_name[ep_option].Data()));
+        TProfile *p_v2w_Q_obs2 = (TProfile *)file->Get(TString::Format("p_pion_single_v2w_single_Q2%s_obs2", ep_option_name[ep_option].Data()));
+    }
+    
 
     p_v2_Q_obs1->Scale(1);
     if (ep_option <= 1) p_v2_Q_obs1->Add(p_v2w_Q_obs1);
@@ -868,7 +962,18 @@ void Q2_parent_results(int cen, int ep_option, int option112)
     Parity_Q_obs2->Scale(1);
     Parity_Q_obs2->Add(Parity_w_Q_obs2);
 
-    int index_for_data[12] = (pion_results)? {39, 40, 43, 44, 51, 52, 55, 56, 63, 64, 67, 68} : {3, 4, 7, 8, 15, 16, 19, 20, 27, 28, 31, 32};
+    if(pion_results){
+        int index_for_data[12] = {39, 40, 43, 44, 51, 52, 55, 56, 63, 64, 67, 68};
+    }
+    else{
+        if(recipe <= 2){
+            int index_for_data[12] = {3, 4, 7, 8, 15, 16, 19, 20, 27, 28, 31, 32};
+        }
+        else{
+            int index_for_data[12] = {69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80};
+        }
+    }
+    
 
     TH1 *Parity_Q_ss1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_ss1", index_for_data[0 + 2 * option112 + 4 * ep_option], index_for_data[0 + 2 * option112 + 4 * ep_option]);
     TH1 *Parity_Q_os1 = (TH1 *)Parity_Q_obs1->ProjectionY("Parity_Q_os1", index_for_data[1 + 2 * option112 + 4 * ep_option], index_for_data[1 + 2 * option112 + 4 * ep_option]);

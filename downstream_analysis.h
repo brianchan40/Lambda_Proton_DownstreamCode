@@ -15,11 +15,12 @@ using namespace std;
 const char *method_name = "KFParticle";
 int min_cen = 0;
 int max_cen = 8;
+int recipe = 4; // 1: pair v2 pair Q2         2: single v2 pair Q2          3. pair v2 single Q2        4. single v2 single Q2
 
 // Global Files
 TFile *file, *output_File; // Files by centrality; file --> input; output_File --> output
 TFile *output_File2;       // output File for all centralities in range
-ofstream result_file, gamma_results;      // text File output for all centralities in range
+ofstream result_file, gamma_results, debug_file;      // text File output for all centralities in range
 
 // Global Variables for Functional Purposes
 float reso[4] = {0.}, reso1[3] = {0.}; // reso = Sub EP Reso; reso1 = Full EP Reso
@@ -31,8 +32,9 @@ float lam_purity_Q2[3][9][100], antilam_purity_Q2[3][9][100];
 std::vector<TString> name_options3;
 
 // Global Variables for Plotting all Centralities
-std::vector<float> parent_v2_vect[3], alltrks_v2_vect[3], pionpion_v2_vect[3]; // Getting average v2
+std::vector<float> parent_v2_vect[3], alltrks_v2_vect[3]; // Getting average v2
 std::vector<float> proton_v2_vect, lam_v2_vect;
+std::vector<float> pion_v2_vect, pionpion_v2_vect;
 float delta[9], delta_err[9];
 float reso_TPC[9] = {0.}, reso_EPD[9] = {0.}, reso_EPD1[9] = {0.};
 float reso_TPC_err[9] = {0.}, reso_EPD_err[9] = {0.}, reso_EPD1_err[9] = {0.};
@@ -50,7 +52,7 @@ void read_purity_Q2();
 void downstream_analysis_bycen(int cen);
 //
 void initialize_each_cen(int cen);
-void extract_reso();
+void extract_reso(int cen);
 double calc_reso(double res);
 double chi(double res);
 double resEventPlane(double chi);
@@ -62,7 +64,7 @@ void obtain_v2_average(int cen);
 void profile_divide_by_reso_fit_by_const(const char *profile_name, int cen); // used for getting average v2(eta)
 //
 void Q2_parent_results(int cen, int ep_option, int option112);
-float float finding_res_from_resq(TH1 *profile_need_corr, TProfile *res_prof, int b_num, float q2range);
+float finding_res_from_resq(TH1 *profile_need_corr, TProfile *res_prof, int b_num, float q2range);
 
 //
 // Old method that is not used:

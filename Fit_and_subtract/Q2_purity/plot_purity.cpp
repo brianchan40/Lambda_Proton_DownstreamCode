@@ -6,12 +6,14 @@
 
 void plot_purity()
 {
-    TCanvas *c1 = new TCanvas("purity_by_cen", "purity_by_cen", 1500, 800);
-    c1->Divide(3, 3);
+    TCanvas *c1 = new TCanvas("purity_by_cen", "purity_by_cen", 1000, 800);
+    c1->Divide(2, 3);
+    TCanvas *c2 = new TCanvas("purity_by_cen2", "purity_by_cen2", 1200, 640);
+    c2->Divide(2, 2);
 
     for (int i = 0; i < 9; i++)
     {
-        std::fstream myfile(TString::Format("output_cen%d_pion.txt", i), std::ios_base::in);
+        std::fstream myfile(TString::Format("output_cen%d_single_pion.txt", i), std::ios_base::in);
 
         float a = 0;
         int count = 0, count2 = 0, TPC_count = 0, EPD_count = 0, EPD1_count = 0;
@@ -27,6 +29,7 @@ void plot_purity()
             while (ss >> a)
             {
                 if (a < 0) break;
+                // cout << "a = " << a << endl;
 
                 // cout << a << endl;
                 if (count == 0){
@@ -51,7 +54,7 @@ void plot_purity()
             count++;
         }
 
-        std::fstream myfile_anti(TString::Format("output_cen%d_pion_anti.txt", i), std::ios_base::in);
+        std::fstream myfile_anti(TString::Format("output_cen%d_single_pion_anti.txt", i), std::ios_base::in);
 
         a = 0;
         int count_anti = 0, count2_anti = 0, TPC_count_anti = 0, EPD_count_anti = 0, EPD1_count_anti = 0;
@@ -65,6 +68,7 @@ void plot_purity()
             while (ss >> a)
             {
                 if (a < 0) break;
+                // cout << "anti a = " << a << endl;
 
                 // cout << a << endl;
                 if (count_anti == 0){
@@ -94,17 +98,25 @@ void plot_purity()
         TGraph *epd_graph_anti = new TGraph(EPD_count_anti, Q2_value_anti, EPD_tmp_anti);
         TGraph *epd1_graph = new TGraph(EPD1_count, Q2_value, EPD1_tmp);
 
-        c1->cd(i + 1);
-        epd_graph->SetMarkerStyle(kFullCircle);
-        epd_graph->GetXaxis()->SetTitle("Q2");
-        epd_graph->GetYaxis()->SetRangeUser(0.92, 1);
-        epd_graph->GetYaxis()->SetTitle("purity");
+        if (i < 6) c1->cd(i + 1);
+        else c2->cd(i-5);
+        
+        epd_graph->SetMarkerStyle(kCircle);
+        epd_graph->SetMarkerSize(0.5);
+        epd_graph->SetTitle(TString::Format("Centrality Bin %d", i+1).Data());
+        epd_graph->GetXaxis()->SetTitle("q^{2}_{pion-pair}");
+        // epd_graph->GetXaxis()->SetTitleSize(0.55);
+        // epd_graph->GetXaxis()->SetTitleOffset(0.7);
+        epd_graph->GetYaxis()->SetRangeUser(0.9, 1.02);
+        epd_graph->GetYaxis()->SetTitle("purity % (# Signal / # Total)");
+        // epd_graph->GetYaxis()->SetTitleSize(0.55);
         epd_graph->Draw("AP");
-        epd_graph_anti->SetMarkerStyle(kFullCircle);
+        epd_graph_anti->SetMarkerStyle(kCircle);
+        epd_graph_anti->SetMarkerSize(0.5);
         epd_graph_anti->SetMarkerColor(kRed);
         epd_graph_anti->SetLineColor(kRed);
         epd_graph_anti->Draw("SAMES P");
-        epd1_graph->SetMarkerStyle(kFullCircle);
+        epd1_graph->SetMarkerStyle(kCircle);
         epd1_graph->SetMarkerColor(kBlue);
         epd1_graph->SetLineColor(kBlue);
         // epd1_graph->Draw("SAMES P");
@@ -112,5 +124,6 @@ void plot_purity()
 
     TFile f("purity_plot.root", "recreate");
     c1->Write();
+    c2->Write();
     f.Close();
 }
